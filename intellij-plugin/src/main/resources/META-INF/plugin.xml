@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>dev.moldable.exceptions</id>
+    <id>ch.moldexj.exceptions</id>
     <name>Moldable Exceptions</name>
     <vendor>Moldable exceptions prototype</vendor>
 
@@ -14,17 +14,17 @@
     <depends>com.intellij.java</depends>
 
     <projectListeners>
-        <listener class="dev.moldable.intellij.MoldableAutoOpen"
+        <listener class="ch.moldexj.MoldableAutoOpen"
                   topic="com.intellij.xdebugger.XDebuggerManagerListener"/>
     </projectListeners>
 
     <actions>
-        <action id="AssertBreakdown" class="dev.moldable.intellij.AssertBreakdownAction"
+        <action id="AssertBreakdown" class="ch.moldexj.AssertBreakdownAction"
                 text="Break Down Assert">
             <add-to-group group-id="XDebugger.Frames.Tree.Popup" anchor="last"/>
         </action>
         <action id="Moldable.ShowViews"
-                class="dev.moldable.intellij.ShowMoldableViewsAction"
+                class="ch.moldexj.ShowMoldableViewsAction"
                 text="Show Moldable Views"
                 description="Show the views the selected exception declares with @DebugView, plus its causes">
             <add-to-group group-id="XDebugger.ValueGroup" anchor="first"/>
@@ -33,11 +33,11 @@
         <group id="Moldable.RunMenu" text="Moldable Exceptions" popup="false">
             <separator/>
             <action id="Moldable.StopOnUncaught"
-                    class="dev.moldable.intellij.StopOnUncaughtToggleAction"
+                    class="ch.moldexj.StopOnUncaughtToggleAction"
                     text="Moldable: Stop at Uncaught Moldable Exceptions"
                     description="Stop at the throw of an uncaught exception whose chain has views, without any breakpoint"/>
             <action id="Moldable.AutoOpen"
-                    class="dev.moldable.intellij.AutoOpenToggleAction"
+                    class="ch.moldexj.AutoOpenToggleAction"
                     text="Moldable: Open Views at Exception Breakpoints"
                     description="Open the moldable views automatically when the debugger stops on a moldable exception"/>
             <add-to-group group-id="RunMenu" anchor="last"/>

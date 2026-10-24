@@ -60,8 +60,8 @@ show up for every exception in the chain that matches the parameter type, so a v
 to its subclasses. The class only has to be on the debugged program's classpath (main sources, not test sources, unless
 you are debugging a test).
 
-`samples/checkout-demo` has `JdkExceptionViews` (the parse position, and a table of which common date formats accept
-the input) and `DateDemo`, which throws an uncaught `DateTimeParseException`. The debugger stops inside `java.time`
+`samples/checkout-demo` has `DateTimeParseExceptionViews` (the parse position, and a table of which common date formats accept
+the input) and `DateTimeParseExceptionDemo`, which throws an uncaught `DateTimeParseException`. The debugger stops inside `java.time`
 where it is thrown, and the views open there.
 
 ## Layout
@@ -122,8 +122,8 @@ the program alive, and the helper can run there. One run is enough, and caught e
 
 ## Status: what was tested
 
-- `moldable-views`, `moldable-snapshot-rt` and the demo were compiled (Java 8 bytecode) and run here. The snapshot
-  of the demo was checked: chain, cause and suppressed exception, the three views, built-in views. So were the
+- `moldable-views`, `moldable-snapshot-rt` and the ch were compiled (Java 8 bytecode) and run here. The snapshot
+  of the ch was checked: chain, cause and suppressed exception, the three views, built-in views. So were the
   guards: a view that throws, a view that returns null, a broken `getMessage()`, a cycle, and a project's own
   `@DebugView` annotation.
 - **The plugin itself has not been compiled**: the IntelliJ Platform artifacts could not be downloaded where it
