@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    id("java-library")
 }
 
 // Java 8 bytecode, so that any application can use the annotation.

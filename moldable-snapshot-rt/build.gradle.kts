@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    id("java-library")
 }
 
 // The plugin defines this class inside the DEBUGGED JVM from its bytes. IntelliJ refuses to load a helper compiled
