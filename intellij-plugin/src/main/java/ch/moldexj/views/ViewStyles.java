@@ -1,4 +1,4 @@
-package ch.moldexj;
+package ch.moldexj.views;
 
 import com.intellij.openapi.editor.markup.EffectType;
 import com.intellij.openapi.editor.markup.HighlighterLayer;
@@ -12,7 +12,7 @@ import java.awt.*;
  * Maps the style names views use ("error", "ok", "accent1", ...) to colors. Every color is a light/dark pair, so the
  * views read well in both IntelliJ themes.
  */
-final class ViewStyles {
+public final class ViewStyles {
 
     static final JBColor ERROR_BACKGROUND = new JBColor(new Color(0xFFDAD6), new Color(0x5C2B2B));
     static final JBColor ERROR_FOREGROUND = new JBColor(new Color(0xB3261E), new Color(0xFF8A80));

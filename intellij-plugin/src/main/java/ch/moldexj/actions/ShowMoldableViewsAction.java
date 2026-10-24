@@ -1,5 +1,6 @@
-package ch.moldexj;
+package ch.moldexj.actions;
 
+import ch.moldexj.debugger.SnapshotCommand;
 import com.intellij.debugger.engine.JavaValue;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;

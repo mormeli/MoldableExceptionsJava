@@ -1,4 +1,4 @@
-package ch.moldexj;
+package ch.moldexj.actions;
 
 import com.intellij.debugger.DebuggerManagerEx;
 import com.intellij.debugger.SourcePosition;

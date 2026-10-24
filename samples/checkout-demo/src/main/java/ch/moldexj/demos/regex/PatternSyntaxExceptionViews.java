@@ -1,5 +1,8 @@
 package ch.moldexj.demos.regex;
 
+import ch.moldexj.views.DebugView;
+import ch.moldexj.views.DebugViews;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;

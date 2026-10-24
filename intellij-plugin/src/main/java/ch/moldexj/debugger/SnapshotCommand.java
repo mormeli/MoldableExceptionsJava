@@ -1,5 +1,9 @@
-package ch.moldexj;
+package ch.moldexj.debugger;
 
+import ch.moldexj.ExceptionSnapshot;
+import ch.moldexj.views.finders.ExternalViewFinder;
+import ch.moldexj.SnapshotLoader;
+import ch.moldexj.views.MoldableViewsDialog;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
 import com.intellij.debugger.engine.events.SuspendContextCommandImpl;
@@ -16,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  * Debugger-thread command: snapshot the exception, then open the dialog on the UI thread.
  * Used both by the context-menu action and by the automatic opening at exception breakpoints.
  */
-final class SnapshotCommand extends SuspendContextCommandImpl {
+public final class SnapshotCommand extends SuspendContextCommandImpl {
 
     private static final Logger LOG = Logger.getInstance(SnapshotCommand.class);
 
@@ -31,8 +35,13 @@ final class SnapshotCommand extends SuspendContextCommandImpl {
      * @param automatic    true when opened by an exception breakpoint: then only moldable chains open a dialog, and
      *                     failures are logged instead of shown
      */
-    SnapshotCommand(@NotNull Project project, @NotNull SuspendContextImpl suspendContext, @Nullable EvaluationContextImpl givenContext,
-                    @NotNull ObjectReference exception, @NotNull String origin, boolean automatic) {
+    public SnapshotCommand(
+            @NotNull Project project,
+            @NotNull SuspendContextImpl suspendContext,
+            @Nullable EvaluationContextImpl givenContext,
+            @NotNull ObjectReference exception,
+            @NotNull String origin,
+            boolean automatic) {
         super(suspendContext);
         this.project = project;
         this.givenContext = givenContext;

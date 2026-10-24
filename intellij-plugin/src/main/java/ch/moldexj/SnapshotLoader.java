@@ -1,5 +1,6 @@
 package ch.moldexj;
 
+import ch.moldexj.views.finders.ExternalViewFinder;
 import com.google.gson.Gson;
 import com.intellij.debugger.engine.DebugProcess;
 import com.intellij.debugger.engine.DebuggerUtils;
@@ -16,7 +17,7 @@ import com.sun.jdi.ReferenceType;
 import com.sun.jdi.StringReference;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
-import ch.moldexj.rt.MoldableSnapshot;
+import ch.moldexj.runtime.MoldableSnapshot;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,7 +36,7 @@ import java.util.WeakHashMap;
  * dependency. Only plain JDI and long-stable IntelliJ APIs are used: IntelliJ's own helper loader
  * ({@code DebuggerUtilsImpl.invokeHelperMethod}) only reads helper classes from {@code idea_rt.jar} in 2025.3.
  */
-final class SnapshotLoader {
+public final class SnapshotLoader {
 
     private static final Gson GSON = new Gson();
     private static final String HELPER = MoldableSnapshot.class.getName();
@@ -51,7 +52,7 @@ final class SnapshotLoader {
     }
 
     /** Talks to the VM: call on the debugger manager thread only. */
-    static boolean isThrowable(ObjectReference value) {
+    public static boolean isThrowable(ObjectReference value) {
         return DebuggerUtils.instanceOf(value.referenceType(), "java.lang.Throwable");
     }
 
@@ -60,7 +61,7 @@ final class SnapshotLoader {
      *
      * @param externalViews "com.acme.Views#method" lines from {@link ExternalViewFinder}, or ""
      */
-    static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, String externalViews)
+    public static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, String externalViews)
             throws EvaluateException {
         DebugProcess process = context.getDebugProcess();
         ClassType helper = helperClass(context, process, exception.virtualMachine());

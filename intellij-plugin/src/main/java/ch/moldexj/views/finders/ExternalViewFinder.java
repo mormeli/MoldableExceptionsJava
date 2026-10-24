@@ -1,4 +1,4 @@
-package ch.moldexj;
+package ch.moldexj.views.finders;
 
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
@@ -31,7 +31,7 @@ import java.util.Set;
  * of {@code com.acme.JdkExceptionViews#parsePosition} lines; the helper in the debugged JVM loads those classes and
  * calls each method for every exception in the chain that its parameter type accepts.
  */
-final class ExternalViewFinder {
+public final class ExternalViewFinder {
 
     private static final Logger LOG = Logger.getInstance(ExternalViewFinder.class);
 
@@ -39,7 +39,7 @@ final class ExternalViewFinder {
     }
 
     /** Safe to call on the debugger thread. Returns "" while indexing or if anything goes wrong. */
-    static String find(Project project) {
+    public static String find(Project project) {
         if (project.isDisposed() || DumbService.isDumb(project)) {
             return "";
         }

@@ -1,13 +1,14 @@
-package ch.moldexj;
+package ch.moldexj.actions;
 
+import ch.moldexj.debugger.UncaughtMoldableExceptionRequestor;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.DumbAwareToggleAction;
 import org.jetbrains.annotations.NotNull;
 
-/** Run → "Moldable: Open Views at Exception Breakpoints" (on by default). */
-public final class AutoOpenToggleAction extends DumbAwareToggleAction {
+/** Run → "Moldable: Stop at Uncaught Moldable Exceptions" (on by default). Takes effect immediately. */
+public final class StopOnUncaughtToggleAction extends DumbAwareToggleAction {
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
@@ -16,11 +17,11 @@ public final class AutoOpenToggleAction extends DumbAwareToggleAction {
 
     @Override
     public boolean isSelected(@NotNull AnActionEvent e) {
-        return MoldableAutoOpen.isEnabled();
+        return UncaughtMoldableExceptionRequestor.isEnabled();
     }
 
     @Override
     public void setSelected(@NotNull AnActionEvent e, boolean state) {
-        PropertiesComponent.getInstance().setValue(MoldableAutoOpen.ENABLED_KEY, state, true);
+        PropertiesComponent.getInstance().setValue(UncaughtMoldableExceptionRequestor.ENABLED_KEY, state, true);
     }
 }

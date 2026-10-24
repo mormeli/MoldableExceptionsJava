@@ -1,5 +1,7 @@
 package ch.moldexj.demos.ee;
 
+import ch.moldexj.views.DebugView;
+import ch.moldexj.views.DebugViews;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Min;

@@ -1,5 +1,8 @@
-package ch.moldexj;
+package ch.moldexj.debugger;
 
+import ch.moldexj.ExceptionSnapshot;
+import ch.moldexj.SnapshotLoader;
+import ch.moldexj.views.finders.ExternalViewFinder;
 import com.intellij.debugger.engine.DebugProcessImpl;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
@@ -24,29 +27,25 @@ import org.jetbrains.annotations.Nullable;
  * stops only if an exception in the chain has views: its own {@code @DebugView} methods, or static views in the
  * project (e.g. for PatternSyntaxException). Other uncaught exceptions behave exactly as without the plugin.
  */
-final class MoldableUncaughtRequestor implements FilteredRequestor {
+public final class UncaughtMoldableExceptionRequestor implements FilteredRequestor {
 
-    static final String ENABLED_KEY = "moldable.exceptions.stopOnUncaught";
+    public static final String ENABLED_KEY = "moldable.exceptions.stopOnUncaught";
 
-    private static final Logger LOG = Logger.getInstance(MoldableUncaughtRequestor.class);
+    private static final Logger LOG = Logger.getInstance(UncaughtMoldableExceptionRequestor.class);
 
     private final Project project;
 
-    private MoldableUncaughtRequestor(Project project) {
+    public UncaughtMoldableExceptionRequestor(Project project) {
         this.project = project;
     }
 
-    static boolean isEnabled() {
+    public static boolean isEnabled() {
         return PropertiesComponent.getInstance().getBoolean(ENABLED_KEY, true);
     }
 
     /** Call on the debugger manager thread, once the VM is attached. */
-    static void install(Project project, DebugProcessImpl process) {
-        MoldableUncaughtRequestor requestor = new MoldableUncaughtRequestor(project);
-        // null reference type = every exception type; notifyCaught = false, notifyUncaught = true
-        ExceptionRequest request = process.getRequestsManager().createExceptionRequest(requestor, null, false, true);
-        process.getRequestsManager().enableRequest(request);
-        LOG.info("Moldable Exceptions: stopping at uncaught moldable exceptions");
+    public static void install(Project project, DebugProcessImpl process) {
+
     }
 
     @Override
@@ -66,7 +65,9 @@ final class MoldableUncaughtRequestor implements FilteredRequestor {
         try {
             // Same as a breakpoint condition: evaluate in the paused program, decide whether to stop.
             EvaluationContextImpl context = new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
-            ExceptionSnapshot snapshot = SnapshotLoader.load(context, ((ExceptionEvent) event).exception(),
+            ExceptionSnapshot snapshot = SnapshotLoader.load(
+                    context,
+                    ((ExceptionEvent) event).exception(),
                     ExternalViewFinder.find(project));
             LOG.info("Moldable Exceptions: uncaught " + (snapshot.chain.isEmpty() ? "?" : snapshot.chain.get(0).type)
                     + ", moldable=" + snapshot.hasMoldable());

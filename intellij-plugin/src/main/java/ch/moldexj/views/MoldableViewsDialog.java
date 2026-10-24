@@ -1,5 +1,6 @@
-package ch.moldexj;
+package ch.moldexj.views;
 
+import ch.moldexj.ExceptionSnapshot;
 import com.intellij.diff.DiffContentFactory;
 import com.intellij.diff.DiffManager;
 import com.intellij.diff.DiffRequestPanel;
@@ -51,7 +52,7 @@ import java.util.List;
  * right. The exception's own views come first; Details, Stack trace and Fields are added for every exception.
  * Diffs use IntelliJ's own diff viewer.
  */
-final class MoldableViewsDialog extends DialogWrapper {
+public final class MoldableViewsDialog extends DialogWrapper {
 
     /** One auto-opened dialog per project; a new exception stop replaces it. */
     private static final Key<MoldableViewsDialog> CURRENT = Key.create("moldable.exceptions.dialog");
@@ -61,7 +62,7 @@ final class MoldableViewsDialog extends DialogWrapper {
     private final JPanel detailPanel = new JPanel(new BorderLayout());
     private Disposable selectionDisposable;
 
-    static void open(@NotNull Project project, @NotNull ExceptionSnapshot snapshot, @NotNull String origin, boolean replacePrevious) {
+    public static void open(@NotNull Project project, @NotNull ExceptionSnapshot snapshot, @NotNull String origin, boolean replacePrevious) {
         if (replacePrevious) {
             MoldableViewsDialog previous = project.getUserData(CURRENT);
             if (previous != null && !previous.isDisposed()) {

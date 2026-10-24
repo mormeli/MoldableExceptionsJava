@@ -14,17 +14,17 @@
     <depends>com.intellij.java</depends>
 
     <projectListeners>
-        <listener class="ch.moldexj.MoldableAutoOpen"
+        <listener class="ch.moldexj.debugger.MoldableExceptionDebuggerManagerListener"
                   topic="com.intellij.xdebugger.XDebuggerManagerListener"/>
     </projectListeners>
 
     <actions>
-        <action id="AssertBreakdown" class="ch.moldexj.AssertBreakdownAction"
+        <action id="AssertBreakdown" class="ch.moldexj.actions.AssertBreakdownAction"
                 text="Break Down Assert">
             <add-to-group group-id="XDebugger.Frames.Tree.Popup" anchor="last"/>
         </action>
         <action id="Moldable.ShowViews"
-                class="ch.moldexj.ShowMoldableViewsAction"
+                class="ch.moldexj.actions.ShowMoldableViewsAction"
                 text="Show Moldable Views"
                 description="Show the views the selected exception declares with @DebugView, plus its causes">
             <add-to-group group-id="XDebugger.ValueGroup" anchor="first"/>
@@ -33,11 +33,11 @@
         <group id="Moldable.RunMenu" text="Moldable Exceptions" popup="false">
             <separator/>
             <action id="Moldable.StopOnUncaught"
-                    class="ch.moldexj.StopOnUncaughtToggleAction"
+                    class="ch.moldexj.actions.StopOnUncaughtToggleAction"
                     text="Moldable: Stop at Uncaught Moldable Exceptions"
                     description="Stop at the throw of an uncaught exception whose chain has views, without any breakpoint"/>
             <action id="Moldable.AutoOpen"
-                    class="ch.moldexj.AutoOpenToggleAction"
+                    class="ch.moldexj.actions.AutoOpenToggleAction"
                     text="Moldable: Open Views at Exception Breakpoints"
                     description="Open the moldable views automatically when the debugger stops on a moldable exception"/>
             <add-to-group group-id="RunMenu" anchor="last"/>
