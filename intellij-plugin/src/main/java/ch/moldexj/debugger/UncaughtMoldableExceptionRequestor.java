@@ -2,7 +2,9 @@ package ch.moldexj.debugger;
 
 import ch.moldexj.ExceptionSnapshot;
 import ch.moldexj.SnapshotLoader;
-import ch.moldexj.views.finders.ExternalViewFinder;
+import ch.moldexj.view.finder.PsiViewFinder;
+import ch.moldexj.view.finder.PsiViewFinder2;
+import ch.moldexj.view.request.DataRequestRegistry;
 import com.intellij.debugger.engine.DebugProcessImpl;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
@@ -14,15 +16,16 @@ import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.sun.jdi.event.ExceptionEvent;
 import com.sun.jdi.event.LocatableEvent;
-import com.sun.jdi.request.ExceptionRequest;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.stream.Collectors;
 
 /**
  * Stops the debugger at the throw of an uncaught exception whose chain is moldable, without any breakpoint.
  *
- * <p>When a debug session attaches, the plugin registers its own exception request (uncaught only, all exception
- * types) with IntelliJ's request manager, the same mechanism breakpoints use. The JVM reports "uncaught" at the throw,
+ * <p>When a debug session attaches, the plugin registers its own exception requestArguments (uncaught only, all exception
+ * types) with IntelliJ's requestArguments manager, the same mechanism breakpoints use. The JVM reports "uncaught" at the throw,
  * so the program is still alive there. This requestor then takes the snapshot, like a breakpoint condition, and
  * stops only if an exception in the chain has views: its own {@code @DebugView} methods, or static views in the
  * project (e.g. for PatternSyntaxException). Other uncaught exceptions behave exactly as without the plugin.
@@ -68,7 +71,10 @@ public final class UncaughtMoldableExceptionRequestor implements FilteredRequest
             ExceptionSnapshot snapshot = SnapshotLoader.load(
                     context,
                     ((ExceptionEvent) event).exception(),
-                    ExternalViewFinder.find(project));
+                    new PsiViewFinder2(project, new DataRequestRegistry())
+                            .findViews()
+                            .stream()
+                            .map(e -> e.qualifiedClassName() + "#" + e.methodName()).collect(Collectors.joining("\n")));
             LOG.info("Moldable Exceptions: uncaught " + (snapshot.chain.isEmpty() ? "?" : snapshot.chain.get(0).type)
                     + ", moldable=" + snapshot.hasMoldable());
             return snapshot.hasMoldable();

@@ -1,4 +1,4 @@
-package ch.moldexj.views;
+package ch.moldexj.view;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;

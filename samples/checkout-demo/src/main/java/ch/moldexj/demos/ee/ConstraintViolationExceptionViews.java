@@ -1,7 +1,9 @@
 package ch.moldexj.demos.ee;
 
-import ch.moldexj.views.DebugView;
-import ch.moldexj.views.DebugViews;
+import ch.moldexj.view.DebugView;
+import ch.moldexj.view.DebugViews;
+import ch.moldexj.view.Exception;
+import ch.moldexj.view.StackFrames;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Min;
@@ -9,7 +11,9 @@ import jakarta.validation.constraints.Size;
 
 public class ConstraintViolationExceptionViews {
     @DebugView(value = "Violations")
-    static DebugViews.View pattern(ConstraintViolationException ex) {
+    static DebugViews.View constraintViolationView(
+            @Exception ConstraintViolationException ex,
+            @StackFrames(depth = 1) Object stackFrames) {
         return DebugViews.styledTable(
                 ex.getConstraintViolations(),
                 violation -> null,

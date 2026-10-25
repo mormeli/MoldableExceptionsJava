@@ -6,6 +6,7 @@ plugins {
 dependencies {
     // Bundled into the plugin; its class file is what gets injected into the debugged JVM.
     implementation(project(":moldable-snapshot-rt"))
+    implementation(project(":moldable-views"))
 
     intellijPlatform {
         intellijIdea("2025.3")

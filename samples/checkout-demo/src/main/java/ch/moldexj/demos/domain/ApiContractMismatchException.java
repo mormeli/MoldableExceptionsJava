@@ -1,8 +1,8 @@
 package ch.moldexj.demos.domain;
 
 
-import ch.moldexj.views.DebugView;
-import ch.moldexj.views.DebugViews;
+import ch.moldexj.view.DebugView;
+import ch.moldexj.view.DebugViews;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static ch.moldexj.views.DebugViews.column;
+import static ch.moldexj.view.DebugViews.column;
 
 /**
  * Raised when an API response does not match the contract the caller expected.

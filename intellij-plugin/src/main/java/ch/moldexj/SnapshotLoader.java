@@ -1,6 +1,6 @@
 package ch.moldexj;
 
-import ch.moldexj.views.finders.ExternalViewFinder;
+import ch.moldexj.view.finder.PsiViewFinder;
 import com.google.gson.Gson;
 import com.intellij.debugger.engine.DebugProcess;
 import com.intellij.debugger.engine.DebuggerUtils;
@@ -59,7 +59,7 @@ public final class SnapshotLoader {
     /**
      * Must run on the debugger manager thread, inside a suspend context (a SuspendContextCommandImpl).
      *
-     * @param externalViews "com.acme.Views#method" lines from {@link ExternalViewFinder}, or ""
+     * @param externalViews "com.acme.Views#method" lines from {@link PsiViewFinder}, or ""
      */
     public static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, String externalViews)
             throws EvaluateException {
@@ -87,6 +87,7 @@ public final class SnapshotLoader {
     private static ClassType helperClass(EvaluationContextImpl context, DebugProcess process, VirtualMachine vm)
             throws EvaluateException {
         ClassLoaderReference appLoader = context.getClassLoader();
+
         long key = appLoader == null ? 0 : appLoader.uniqueID();
         synchronized (LOADED) {
             ClassType cached = LOADED.computeIfAbsent(vm, k -> new java.util.HashMap<>()).get(key);

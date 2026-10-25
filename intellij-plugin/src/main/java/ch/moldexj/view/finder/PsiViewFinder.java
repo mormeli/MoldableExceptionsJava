@@ -1,4 +1,4 @@
-package ch.moldexj.views.finders;
+package ch.moldexj.view.finder;
 
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.diagnostic.Logger;
@@ -31,11 +31,11 @@ import java.util.Set;
  * of {@code com.acme.JdkExceptionViews#parsePosition} lines; the helper in the debugged JVM loads those classes and
  * calls each method for every exception in the chain that its parameter type accepts.
  */
-public final class ExternalViewFinder {
+public final class PsiViewFinder {
 
-    private static final Logger LOG = Logger.getInstance(ExternalViewFinder.class);
+    private static final Logger LOG = Logger.getInstance(PsiViewFinder.class);
 
-    private ExternalViewFinder() {
+    private PsiViewFinder() {
     }
 
     /** Safe to call on the debugger thread. Returns "" while indexing or if anything goes wrong. */

@@ -1,4 +1,4 @@
-package ch.moldexj.actions;
+package ch.moldexj.action;
 
 import ch.moldexj.debugger.MoldableDebugProcessListener;
 import ch.moldexj.debugger.MoldableExceptionDebuggerManagerListener;

@@ -1,4 +1,4 @@
-package ch.moldexj.views;
+package ch.moldexj.view;
 
 import com.intellij.openapi.editor.markup.EffectType;
 import com.intellij.openapi.editor.markup.HighlighterLayer;

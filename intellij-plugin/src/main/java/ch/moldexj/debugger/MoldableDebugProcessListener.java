@@ -41,7 +41,7 @@ public class MoldableDebugProcessListener implements DebugProcessListener {
                 try {
                     installRequestor();
                 } catch (Exception e) {
-                    LOG.warn("processAttached - Could not register the uncaught-exception request", e);
+                    LOG.warn("processAttached - Could not register the uncaught-exception requestArguments", e);
                 }
             }
         });
@@ -87,7 +87,7 @@ public class MoldableDebugProcessListener implements DebugProcessListener {
     }
 
     /***
-     * Adds the {@see UncaughtMoldableExceptionRequestor} to the debuggees request manager.
+     * Adds the {@see UncaughtMoldableExceptionRequestor} to the debuggees requestArguments manager.
      */
     private void installRequestor() {
         LOG.info("installRequestor - Installing exception requestor");

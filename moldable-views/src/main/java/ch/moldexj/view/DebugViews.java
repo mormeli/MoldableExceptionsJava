@@ -1,4 +1,4 @@
-package ch.moldexj.views;
+package ch.moldexj.view;
 
 import java.util.ArrayList;
 import java.util.Arrays;

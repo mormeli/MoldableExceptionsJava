@@ -1,4 +1,4 @@
-package ch.moldexj.views;
+package ch.moldexj.view;
 
 import ch.moldexj.ExceptionSnapshot;
 import com.intellij.diff.DiffContentFactory;

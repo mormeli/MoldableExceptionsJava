@@ -1,4 +1,4 @@
-package ch.moldexj.actions;
+package ch.moldexj.action;
 
 import ch.moldexj.debugger.UncaughtMoldableExceptionRequestor;
 import com.intellij.ide.util.PropertiesComponent;
