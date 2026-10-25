@@ -2,9 +2,7 @@ package ch.moldexj.debugger;
 
 import ch.moldexj.ExceptionSnapshot;
 import ch.moldexj.SnapshotLoader;
-import ch.moldexj.view.finder.PsiViewFinder;
-import ch.moldexj.view.finder.PsiViewFinder2;
-import ch.moldexj.view.request.DataRequestRegistry;
+import ch.moldexj.view.finder.ViewIndex;
 import com.intellij.debugger.engine.DebugProcessImpl;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
@@ -18,8 +16,6 @@ import com.sun.jdi.event.ExceptionEvent;
 import com.sun.jdi.event.LocatableEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.stream.Collectors;
 
 /**
  * Stops the debugger at the throw of an uncaught exception whose chain is moldable, without any breakpoint.
@@ -68,13 +64,10 @@ public final class UncaughtMoldableExceptionRequestor implements FilteredRequest
         try {
             // Same as a breakpoint condition: evaluate in the paused program, decide whether to stop.
             EvaluationContextImpl context = new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
-            ExceptionSnapshot snapshot = SnapshotLoader.load(
-                    context,
-                    ((ExceptionEvent) event).exception(),
-                    new PsiViewFinder2(project, new DataRequestRegistry())
-                            .findViews()
-                            .stream()
-                            .map(e -> e.qualifiedClassName() + "#" + e.methodName()).collect(Collectors.joining("\n")));
+            ExceptionEvent exceptionEvent = (ExceptionEvent) event;
+            ExceptionSnapshot snapshot = SnapshotLoader.load(context, exceptionEvent.exception(),
+                    ViewIndex.getInstance(project).views(),
+                    suspendContext.getVirtualMachineProxy().getThreadReferenceProxy(exceptionEvent.thread()));
             LOG.info("Moldable Exceptions: uncaught " + (snapshot.chain.isEmpty() ? "?" : snapshot.chain.get(0).type)
                     + ", moldable=" + snapshot.hasMoldable());
             return snapshot.hasMoldable();

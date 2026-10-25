@@ -4,9 +4,8 @@ plugins {
 }
 
 dependencies {
-    // Bundled into the plugin; its class file is what gets injected into the debugged JVM.
+    // Bundled into the plugin: its classes are defined in the debugged JVM, and ViewManifest reads library manifests.
     implementation(project(":moldable-snapshot-rt"))
-    implementation(project(":moldable-views"))
 
     intellijPlatform {
         intellijIdea("2025.3")

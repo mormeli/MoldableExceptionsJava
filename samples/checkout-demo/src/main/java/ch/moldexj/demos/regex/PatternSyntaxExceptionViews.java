@@ -2,6 +2,7 @@ package ch.moldexj.demos.regex;
 
 import ch.moldexj.view.DebugView;
 import ch.moldexj.view.DebugViews;
+import ch.moldexj.view.annotation.Exception;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -13,7 +14,7 @@ import java.util.regex.PatternSyntaxException;
 
 /**
  * Views for {@link PatternSyntaxException}, which we don't own: static {@code @DebugView} methods that take the
- * exception as their only parameter. Found by the Moldable Exceptions plugin in the project's sources.
+ * exception as a parameter marked {@code @Exception}. Found by the Moldable Exceptions plugin in the project's sources.
  */
 final class PatternSyntaxExceptionViews {
 
@@ -27,7 +28,7 @@ final class PatternSyntaxExceptionViews {
      * and the error position in red, escapes dimmed. Hover a colored part for details.
      */
     @DebugView(value = "Pattern", priority = 10)
-    static DebugViews.View pattern(PatternSyntaxException e) {
+    static DebugViews.View pattern(@Exception PatternSyntaxException e) {
         String pattern = e.getPattern();
         Scan scan = scan(pattern);
         DebugViews.HighlightView view = DebugViews.highlight(pattern);
@@ -60,7 +61,7 @@ final class PatternSyntaxExceptionViews {
 
     /** Every ( [ { in the pattern and where it is closed. Most regex syntax errors are unbalanced brackets. */
     @DebugView(value = "Brackets", priority = 20)
-    static DebugViews.View brackets(PatternSyntaxException e) {
+    static DebugViews.View brackets(@Exception PatternSyntaxException e) {
         String pattern = e.getPattern();
         List<Bracket> brackets = scan(pattern).brackets;
         if (brackets.isEmpty()) {
@@ -77,7 +78,7 @@ final class PatternSyntaxExceptionViews {
 
     /** What the error usually means, and the pattern escaped for a literal match. */
     @DebugView(value = "Fix", priority = 30)
-    static DebugViews.View fix(PatternSyntaxException e) {
+    static DebugViews.View fix(@Exception PatternSyntaxException e) {
         String pattern = e.getPattern();
         String description = e.getDescription() == null ? "" : e.getDescription().toLowerCase(Locale.ROOT);
         String advice;

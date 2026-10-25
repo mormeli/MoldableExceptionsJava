@@ -2,6 +2,7 @@ package ch.moldexj.demos.date;
 
 import ch.moldexj.view.DebugView;
 import ch.moldexj.view.DebugViews;
+import ch.moldexj.view.annotation.Exception;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -17,8 +18,8 @@ import java.util.Map;
 
 /**
  * Views for exceptions we don't own. Java has no extension methods, so a view for a JDK exception is a static
- * {@code @DebugView} method that takes the exception as its only parameter. The IntelliJ plugin finds these methods in
- * the project's sources and shows them for every exception in the chain that matches the parameter type.
+ * {@code @DebugView} method that takes the exception as a parameter marked {@code @Exception}. The IntelliJ plugin finds
+ * these methods in the project's sources and shows them for every exception in the chain that matches the parameter type.
  *
  * <p>This class only has to be on the classpath of the debugged program; nothing calls it at runtime.
  */
@@ -28,13 +29,13 @@ final class DateTimeParseExceptionViews {
     }
 
     @DebugView(value = "test", priority = 10)
-    static DebugViews.View assertException(AssertionError assertionError) {
+    static DebugViews.View assertException(@Exception AssertionError assertionError) {
         return DebugViews.text("Assertion failed with exception: " + assertionError.getMessage());
     }
 
     /** The input, highlighted: green what was parsed, red where the parser stopped, grey what was never reached. */
     @DebugView(value = "Parse position", priority = 10)
-    static DebugViews.View parsePosition(DateTimeParseException e) {
+    static DebugViews.View parsePosition(@Exception DateTimeParseException e) {
         String input = e.getParsedString();
         if (input == null) {
             return DebugViews.text("(the exception does not carry the input)");
@@ -58,7 +59,7 @@ final class DateTimeParseExceptionViews {
 
     /** Which common formats would have accepted the input, and what they produce. */
     @DebugView(value = "Other formats", priority = 20)
-    static DebugViews.View otherFormats(DateTimeParseException e) {
+    static DebugViews.View otherFormats(@Exception DateTimeParseException e) {
         String input = e.getParsedString();
         List<String[]> rows = new ArrayList<>();
         for (Map.Entry<String, DateTimeFormatter> format : FORMATS.entrySet()) {

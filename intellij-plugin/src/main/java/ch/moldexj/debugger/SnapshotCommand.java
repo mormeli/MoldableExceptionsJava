@@ -1,11 +1,9 @@
 package ch.moldexj.debugger;
 
 import ch.moldexj.ExceptionSnapshot;
-import ch.moldexj.view.finder.PsiViewFinder;
 import ch.moldexj.SnapshotLoader;
 import ch.moldexj.view.MoldableViewsDialog;
-import ch.moldexj.view.finder.PsiViewFinder2;
-import ch.moldexj.view.request.DataRequestRegistry;
+import ch.moldexj.view.finder.ViewIndex;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
 import com.intellij.debugger.engine.events.SuspendContextCommandImpl;
@@ -17,8 +15,6 @@ import com.intellij.openapi.ui.Messages;
 import com.sun.jdi.ObjectReference;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.stream.Collectors;
 
 /**
  * Debugger-thread command: snapshot the exception, then open the dialog on the UI thread.
@@ -71,13 +67,8 @@ public final class SnapshotCommand extends SuspendContextCommandImpl {
             EvaluationContextImpl context = givenContext != null
                     ? givenContext
                     : new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
-            snapshot = SnapshotLoader.load(
-                    context,
-                    exception,
-                    new PsiViewFinder2(project, new DataRequestRegistry())
-                            .findViews()
-                            .stream()
-                            .map(e -> e.qualifiedClassName() + "#" + e.methodName()).collect(Collectors.joining("\n")));
+            snapshot = SnapshotLoader.load(context, exception, ViewIndex.getInstance(project).views(),
+                    SnapshotLoader.throwThread(suspendContext, exception));
         } catch (Exception | LinkageError e) {
             // LinkageError: e.g. a library (Gson) not visible to the plugin, or the helper class failing to load.
             LOG.warn("Moldable Exceptions: snapshot failed", e);

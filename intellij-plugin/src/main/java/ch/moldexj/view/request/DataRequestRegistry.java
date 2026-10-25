@@ -1,35 +1,43 @@
 package ch.moldexj.view.request;
 
-import ch.moldexj.view.request.psi.exception.PsiExceptionDataRequestDeclarationProcessor;
-import ch.moldexj.view.request.psi.exception.PsiExceptionDataRequestProcessor;
-import ch.moldexj.view.request.psi.frames.PsiStackFrameDataRequestDeclarationProcessor;
-import ch.moldexj.view.request.psi.frames.PsiStackFrameDataRequestProcessor;
+import ch.moldexj.view.request.exception.ExceptionDataRequestDeclarationProcessor;
+import ch.moldexj.view.request.frames.StackFramesDataRequestDeclarationProcessor;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
-public class DataRequestRegistry {
-    private final List<DataRequestDeclarationProcessor> processors;
-    private final Map<Class<?>, DataRequestProcessor> processorMap;
+/** The known parameter annotations. Each declaration processor knows the processor that resolves its requests. */
+public final class DataRequestRegistry {
 
+    private final List<DataRequestDeclarationProcessor> processors = new ArrayList<>();
 
     public DataRequestRegistry() {
-        this.processors     = new ArrayList<>();
-        this.processorMap   = new HashMap<>();
-        register(new PsiExceptionDataRequestDeclarationProcessor(), new PsiExceptionDataRequestProcessor());
-        register(new PsiStackFrameDataRequestDeclarationProcessor(), new PsiStackFrameDataRequestProcessor());
+        register(new ExceptionDataRequestDeclarationProcessor());
+        register(new StackFramesDataRequestDeclarationProcessor());
     }
 
-    public Optional<DataRequestArguments> createArguments(Object request) {
-        for (DataRequestDeclarationProcessor processor : processors) {
-            if(processor.accept(request)) {
-                return Optional.of(processor.createRequest(request));
+    public void register(@NotNull DataRequestDeclarationProcessor declarationProcessor) {
+        processors.add(declarationProcessor);
+    }
+
+    /**
+     * How to fill a parameter with these annotations: the first annotation a processor accepts decides, so unrelated
+     * annotations such as {@code @NotNull} are skipped.
+     */
+    public @NotNull ParameterSource sourceFor(@NotNull List<AnnotationData> annotations) {
+        for (AnnotationData annotation : annotations) {
+            for (DataRequestDeclarationProcessor processor : processors) {
+                if (processor.accept(annotation)) {
+                    return processor.createSource(annotation);
+                }
             }
         }
-        return Optional.empty();
-    }
-
-    public void register(DataRequestDeclarationProcessor declarationProcessor, DataRequestProcessor processor) {
-        this.processors.add(declarationProcessor);
-        this.processorMap.put(declarationProcessor.getClass(), processor);
+        if (annotations.isEmpty()) {
+            return new ParameterSource.Unsupported("A parameter has no annotation, so the plugin cannot fill it.");
+        }
+        return new ParameterSource.Unsupported("No provider for " + annotations.stream()
+                .map(a -> "@" + a.simpleName()).collect(Collectors.joining(", ")) + ".");
     }
 }

@@ -186,6 +186,11 @@ public final class MoldableViewsDialog extends DialogWrapper {
                 JComponent error = createText(view.text);
                 ((JScrollPane) error).getViewport().getView().setForeground(JBColor.RED);
                 return error;
+            case "unavailable":
+                // The view could not run because data it asked for is missing; the text says why.
+                JComponent unavailable = createText(view.text);
+                ((JScrollPane) unavailable).getViewport().getView().setForeground(ViewStyles.MUTED_FOREGROUND);
+                return unavailable;
             default:
                 return createText(view.text);
         }

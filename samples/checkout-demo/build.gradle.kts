@@ -8,8 +8,10 @@ repositories {
 
 dependencies {
     implementation(project(":moldable-views"))
+    annotationProcessor(project(":moldable-views-processor"))
     implementation("org.hibernate.validator:hibernate-validator:9.1.5.Final")
     implementation("org.glassfish:jakarta.el:4.0.2")
+    implementation("org.mockito:mockito-core:5.+")
 }
 
 tasks.withType<JavaCompile>().configureEach {

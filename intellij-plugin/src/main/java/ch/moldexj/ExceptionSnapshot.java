@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The JSON produced by {@code dev.moldable.intellij.rt.MoldableSnapshot} in the debugged JVM, as parsed by Gson.
+ * The JSON produced by {@code ch.moldexj.runtime.MoldableSnapshot} in the debugged JVM, as parsed by Gson.
  * Public fields on purpose: these are plain data holders.
  */
 public final class ExceptionSnapshot {
@@ -48,7 +48,7 @@ public final class ExceptionSnapshot {
 
     public static final class View {
         public String title = "";
-        /** "text", "diff", "table", "highlight" or "error". */
+        /** "text", "diff", "table", "highlight", "error", or "unavailable" (a parameter could not be filled). */
         public String kind = "text";
         public boolean custom;
         public int priority;

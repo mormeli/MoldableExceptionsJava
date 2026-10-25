@@ -1,52 +1,52 @@
 package ch.moldexj;
 
-import ch.moldexj.view.finder.PsiViewFinder;
+import ch.moldexj.runtime.MoldableSnapshot;
+import ch.moldexj.runtime.manifest.ViewManifest;
+import ch.moldexj.view.Parameter;
+import ch.moldexj.view.View;
+import ch.moldexj.view.finder.ViewIndex;
+import ch.moldexj.view.request.DataRequestArguments;
+import ch.moldexj.view.request.DataRequestContext;
+import ch.moldexj.view.request.DataRequestProcessor;
+import ch.moldexj.view.request.ParameterSource;
+import ch.moldexj.view.request.ProvidedValue;
+import ch.moldexj.view.request.impl.DataRequestContextImpl;
 import com.google.gson.Gson;
-import com.intellij.debugger.engine.DebugProcess;
 import com.intellij.debugger.engine.DebuggerUtils;
+import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluateException;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
-import com.intellij.debugger.impl.ClassLoadingUtils;
+import com.intellij.debugger.jdi.ThreadReferenceProxyImpl;
+import com.intellij.openapi.diagnostic.Logger;
 import com.sun.jdi.ArrayReference;
-import com.sun.jdi.ArrayType;
-import com.sun.jdi.ClassLoaderReference;
 import com.sun.jdi.ClassType;
 import com.sun.jdi.Method;
 import com.sun.jdi.ObjectReference;
-import com.sun.jdi.ReferenceType;
 import com.sun.jdi.StringReference;
 import com.sun.jdi.Value;
-import com.sun.jdi.VirtualMachine;
-import ch.moldexj.runtime.MoldableSnapshot;
+import com.sun.jdi.event.Event;
+import com.sun.jdi.event.EventSet;
+import com.sun.jdi.event.ExceptionEvent;
+import org.jetbrains.annotations.Nullable;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
- * Takes a snapshot of an exception in the paused JVM.
- *
- * <p>The helper class {@link MoldableSnapshot} is loaded into the debugged program from this plugin's own class file:
- * a new class loader is created in the program (a child of the application's class loader), the class bytes are passed
- * to its {@code defineClass}, and {@code MoldableSnapshot.toJson(exception)} is called. The application needs no
- * dependency. Only plain JDI and long-stable IntelliJ APIs are used: IntelliJ's own helper loader
- * ({@code DebuggerUtilsImpl.invokeHelperMethod}) only reads helper classes from {@code idea_rt.jar} in 2025.3.
+ * Takes a snapshot of an exception in the paused JVM: resolves the debugger data the views ask for, loads the helper
+ * ({@link HelperLoader}) and calls {@link MoldableSnapshot#toJson(Throwable, String, byte[], Object[])} there.
  */
 public final class SnapshotLoader {
 
+    private static final Logger LOG = Logger.getInstance(SnapshotLoader.class);
     private static final Gson GSON = new Gson();
-    private static final String HELPER = MoldableSnapshot.class.getName();
-    private static final String DEFINE_CLASS_SIGNATURE = "(Ljava/lang/String;[BII)Ljava/lang/Class;";
-    private static final String TO_JSON_SIGNATURE = "(Ljava/lang/Throwable;Ljava/lang/String;)Ljava/lang/String;";
-
-    /** Helper class per debugged VM and application class loader, so it is defined only once per session. */
-    private static final Map<VirtualMachine, Map<Long, ClassType>> LOADED = new WeakHashMap<>();
-
-    private static byte[] helperBytes;
+    private static final String TO_JSON_SIGNATURE =
+            "(Ljava/lang/Throwable;Ljava/lang/String;[B[Ljava/lang/Object;)Ljava/lang/String;";
+    private static final String ONLY_AT_ROOT =
+            "This view needs data from the debugger, which is only available for the exception the debugger stopped at.";
 
     private SnapshotLoader() {
     }
@@ -59,23 +59,40 @@ public final class SnapshotLoader {
     /**
      * Must run on the debugger manager thread, inside a suspend context (a SuspendContextCommandImpl).
      *
-     * @param externalViews "com.acme.Views#method" lines from {@link PsiViewFinder}, or ""
+     * <ol>
+     *   <li>Resolve the debugger data the views ask for (e.g. {@code @StackFrames}), once per distinct request and only
+     *       for views that apply to the exception. This comes first: every method invocation in the debugged JVM,
+     *       defining the helper included, makes the stack frames of the thread invalid.</li>
+     *   <li>Send the views (how to fill each parameter), the data as one byte[] and the live objects as one
+     *       {@code Object[]} to the helper, which runs the views.</li>
+     * </ol>
+     *
+     * @param views       views with parameters, from {@link ViewIndex}
+     * @param throwThread the thread that threw the exception if the debugger is stopped at that throw, else null
      */
-    public static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, String externalViews)
-            throws EvaluateException {
-        DebugProcess process = context.getDebugProcess();
-        ClassType helper = helperClass(context, process, exception.virtualMachine());
+    public static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, List<View> views,
+                                         @Nullable ThreadReferenceProxyImpl throwThread) throws EvaluateException {
+        List<ProvidedValue> values = new ArrayList<>();
+        String spec = spec(views, exception, new DataRequestContextImpl(context, exception, throwThread), values);
+        DebuggeeMarshaller marshaller = new DebuggeeMarshaller();
+        byte[] injected = marshaller.write(values);
+
+        ClassType helper = HelperLoader.entryClass(context, exception.virtualMachine());
         Method toJson = DebuggerUtils.findMethod(helper, "toJson", TO_JSON_SIGNATURE);
         if (toJson == null) {
-            throw new EvaluateException("MoldableSnapshot.toJson not found in the loaded helper class");
+            throw new EvaluateException("MoldableSnapshot.toJson not found in the loaded helper");
         }
-        StringReference spec = exception.virtualMachine().mirrorOf(externalViews);
-        spec.disableCollection();
         Value json;
-        try {
-            json = process.invokeMethod(context, helper, toJson, Arrays.asList(exception, spec));
-        } finally {
-            spec.enableCollection();
+        try (DebuggeeMirrors mirrors = new DebuggeeMirrors(exception.virtualMachine())) {
+            StringReference specMirror = mirrors.string(spec);
+            ArrayReference injectedMirror = values.isEmpty() ? null : mirrors.bytes(injected);
+            ArrayReference handles = marshaller.handles().isEmpty() ? null : mirrors.objects(marshaller.handles());
+            json = context.getDebugProcess().invokeMethod(context, helper, toJson,
+                    Arrays.asList(exception, specMirror, injectedMirror, handles));
+        } catch (EvaluateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new EvaluateException("Could not pass the views to the debugged program: " + e, e);
         }
         if (!(json instanceof StringReference)) {
             throw new EvaluateException("The snapshot helper returned " + json);
@@ -84,97 +101,62 @@ public final class SnapshotLoader {
         return snapshot == null ? new ExceptionSnapshot() : snapshot;
     }
 
-    private static ClassType helperClass(EvaluationContextImpl context, DebugProcess process, VirtualMachine vm)
-            throws EvaluateException {
-        ClassLoaderReference appLoader = context.getClassLoader();
-
-        long key = appLoader == null ? 0 : appLoader.uniqueID();
-        synchronized (LOADED) {
-            ClassType cached = LOADED.computeIfAbsent(vm, k -> new java.util.HashMap<>()).get(key);
-            if (cached != null && isUsable(cached)) {
-                return cached;
-            }
-        }
-
-        // A fresh java.security.SecureClassLoader in the debugged program, parented to the application's loader,
-        // so the helper can see the application's classes but never clashes with them.
-        ClassLoaderReference loader = ClassLoadingUtils.getClassLoader(context, process);
-        loader.disableCollection(); // keep it (and the helper class) alive for the rest of the debug session
-
-        defineClass(context, process, vm, loader, HELPER, helperBytes());
-
-        ReferenceType type = process.findClass(context, HELPER, loader);
-        if (!(type instanceof ClassType)) {
-            throw new EvaluateException("Could not load " + HELPER + " into the debugged program");
-        }
-        synchronized (LOADED) {
-            LOADED.computeIfAbsent(vm, k -> new java.util.HashMap<>()).put(key, (ClassType) type);
-        }
-        return (ClassType) type;
-    }
-
-    /** Calls loader.defineClass(name, bytes, 0, bytes.length) in the debugged program, using plain JDI mirrors. */
-    private static void defineClass(EvaluationContextImpl context, DebugProcess process, VirtualMachine vm,
-                                    ClassLoaderReference loader, String name, byte[] bytes) throws EvaluateException {
-        Method define = DebuggerUtils.findMethod(loader.referenceType(), "defineClass", DEFINE_CLASS_SIGNATURE);
-        if (define == null) {
-            throw new EvaluateException("ClassLoader.defineClass not found");
-        }
-
-        StringReference nameMirror = null;
-        ArrayReference bytesMirror = null;
-        try {
-            nameMirror = vm.mirrorOf(name);
-            nameMirror.disableCollection();
-
-            List<ReferenceType> byteArrayTypes = vm.classesByName("byte[]");
-            if (byteArrayTypes.isEmpty()) {
-                throw new EvaluateException("byte[] is not loaded in the debugged program");
-            }
-            bytesMirror = ((ArrayType) byteArrayTypes.get(0)).newInstance(bytes.length);
-            bytesMirror.disableCollection();
-            List<Value> values = new ArrayList<>(bytes.length);
-            for (byte b : bytes) {
-                values.add(vm.mirrorOf(b));
-            }
-            bytesMirror.setValues(values);
-
-            process.invokeMethod(context, loader, define,
-                    Arrays.asList(nameMirror, bytesMirror, vm.mirrorOf(0), vm.mirrorOf(bytes.length)));
-        } catch (EvaluateException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new EvaluateException("Could not define " + name + " in the debugged program: " + e, e);
-        } finally {
-            if (nameMirror != null) {
-                nameMirror.enableCollection();
-            }
-            if (bytesMirror != null) {
-                bytesMirror.enableCollection();
-            }
-        }
-    }
-
-    private static boolean isUsable(ClassType type) {
-        try {
-            return type.isPrepared();
-        } catch (Exception e) {
-            return false; // the class was unloaded or the VM is gone
-        }
-    }
-
-    private static synchronized byte[] helperBytes() throws EvaluateException {
-        if (helperBytes == null) {
-            String resource = "/" + HELPER.replace('.', '/') + ".class";
-            try (InputStream in = MoldableSnapshot.class.getResourceAsStream(resource)) {
-                if (in == null) {
-                    throw new EvaluateException("Class file " + resource + " is missing from the plugin");
+    /**
+     * The view spec the helper reads ({@code ViewSpec} in moldable-snapshot-rt): per view a {@code view} line and one
+     * {@code bind} line per parameter. Resolves the debugger data on the way and adds it to {@code values}.
+     */
+    private static String spec(List<View> views, ObjectReference exception, DataRequestContext context, List<ProvidedValue> values) {
+        Map<DataRequestArguments, Integer> resolved = new HashMap<>();
+        StringBuilder spec = new StringBuilder();
+        for (View view : views) {
+            boolean forRoot = view.needsDebuggerData() && appliesTo(view, exception);
+            spec.append("view ").append(ViewManifest.encode(view.className())).append(' ')
+                    .append(ViewManifest.encode(view.methodName())).append(view.isStatic() ? " static\n" : " instance\n");
+            for (Parameter parameter : view.parameters()) {
+                spec.append("bind ").append(parameter.position()).append(' ');
+                switch (parameter.source()) {
+                    case ParameterSource.ThrownException ignored -> spec.append("exception");
+                    case ParameterSource.Unsupported unsupported -> spec.append("missing ").append(ViewManifest.encode(unsupported.reason()));
+                    case ParameterSource.Provided provided when !forRoot -> spec.append("missing ").append(ViewManifest.encode(ONLY_AT_ROOT));
+                    case ParameterSource.Provided provided -> spec.append("value ").append(resolved.computeIfAbsent(
+                            provided.arguments(), arguments -> {
+                                values.add(resolve(provided, context));
+                                return values.size() - 1;
+                            }));
                 }
-                helperBytes = in.readAllBytes();
-            } catch (IOException e) {
-                throw new EvaluateException("Could not read " + resource + ": " + e, e);
+                spec.append('\n');
             }
         }
-        return helperBytes;
+        return spec.toString();
+    }
+
+    /** The thread whose exception event this suspend context stopped at, if it is a throw of {@code exception}. */
+    public static @Nullable ThreadReferenceProxyImpl throwThread(SuspendContextImpl suspendContext, ObjectReference exception) {
+        EventSet events = suspendContext.getEventSet();
+        if (events == null) {
+            return null;
+        }
+        for (Event event : events) {
+            if (event instanceof ExceptionEvent exceptionEvent && exception.equals(exceptionEvent.exception())) {
+                return suspendContext.getVirtualMachineProxy().getThreadReferenceProxy(exceptionEvent.thread());
+            }
+        }
+        return null;
+    }
+
+    /** Debugger data belongs to the root exception, so only views shown for the root need it (a cheap JDI check). */
+    private static boolean appliesTo(View view, ObjectReference exception) {
+        String type = view.exceptionType();
+        return type != null && DebuggerUtils.instanceOf(exception.referenceType(), type);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ProvidedValue resolve(ParameterSource.Provided provided, DataRequestContext context) {
+        try {
+            return ((DataRequestProcessor<DataRequestArguments>) provided.processor()).process(provided.arguments(), context);
+        } catch (RuntimeException e) {
+            LOG.warn("Moldable Exceptions: " + provided.arguments() + " failed", e);
+            return ProvidedValue.unavailable("The debugger could not provide " + provided.arguments() + ": " + e);
+        }
     }
 }

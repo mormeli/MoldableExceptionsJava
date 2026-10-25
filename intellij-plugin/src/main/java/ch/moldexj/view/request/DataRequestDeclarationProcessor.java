@@ -2,8 +2,14 @@ package ch.moldexj.view.request;
 
 import org.jetbrains.annotations.NotNull;
 
-public interface DataRequestDeclarationProcessor<T> {
-    boolean accept(Object  declaration);
+/**
+ * Reads a parameter annotation (the declaration of a data request) and says how the parameter is filled. Works on
+ * {@link AnnotationData}, so the same processor serves views found in sources and in library manifests.
+ */
+public interface DataRequestDeclarationProcessor {
 
-    DataRequestArguments createRequest(@NotNull T declaration);
+    boolean accept(@NotNull AnnotationData annotation);
+
+    /** Called only for accepted annotations. Problems with the declaration become {@link ParameterSource.Unsupported}. */
+    @NotNull ParameterSource createSource(@NotNull AnnotationData annotation);
 }

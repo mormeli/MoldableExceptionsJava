@@ -43,33 +43,75 @@ Styles: `error` (red background, wavy underline), `warning`, `ok` (green), `mute
 
 `DateTimeParseException`, `SQLException`, `HttpClientErrorException` and other library exceptions can't get
 `@DebugView` methods of their own. Java has no extension methods, so write a **static** `@DebugView` method that takes
-the exception as its only parameter, in any class of your project:
+the exception as a parameter marked `@Exception`, in any class of your project:
 
 ```java
 final class JdkExceptionViews {
 
     @DebugView(value = "Parse position", priority = 10)
-    static String parsePosition(DateTimeParseException e) {
+    static String parsePosition(@Exception DateTimeParseException e) {
         return e.getParsedString() + "\n" + "~".repeat(e.getErrorIndex()) + "^";
     }
 }
 ```
 
-The plugin finds these methods through IntelliJ's index of your project's sources; nothing has to be registered. They
-show up for every exception in the chain that matches the parameter type, so a view for `SQLException` also applies
-to its subclasses. The class only has to be on the debugged program's classpath (main sources, not test sources, unless
-you are debugging a test).
+The plugin finds these methods through IntelliJ's index of your project's sources, and in the view manifests of your
+libraries (see below); nothing has to be registered. They show up for every exception in the chain that matches the
+parameter type, so a view for `SQLException` also applies to its subclasses. The class only has to be on the debugged
+program's classpath (main sources, not test sources, unless you are debugging a test).
 
 `samples/checkout-demo` has `DateTimeParseExceptionViews` (the parse position, and a table of which common date formats accept
 the input) and `DateTimeParseExceptionDemo`, which throws an uncaught `DateTimeParseException`. The debugger stops inside `java.time`
 where it is thrown, and the views open there.
+
+## Data from the debugger
+
+Views run in the debugged program and only see what the exception knows. More parameters, marked with an annotation,
+ask the debugger for what it knows. `@StackFrames` gives the stack of the throwing thread with `this`, the arguments
+and the local variables of each frame, as **live objects**:
+
+```java
+@DebugView(value = "Throw site", priority = 20)
+static DebugViews.View throwSite(@Exception ConstraintViolationException e, @StackFrames(depth = 3) DebugStack stack) {
+    DebugLocal user = stack.frames().get(0).local("falscherBenutzer");   // the User that failed validation
+    ...
+}
+```
+
+`DebugStack`, `DebugFrame` and `DebugLocal` are interfaces in `moldable-views`; the view receives a proxy, so an own
+interface with the same methods works too, and `Map` or `Object` get the raw data. The stack exists only while the
+debugger is stopped at the throw of that exception: for a cause in the chain, or when the views are opened by hand at a
+breakpoint, the tab says why it is not available. The plugin resolves each request once per stop, only if a view that
+applies to the exception asks for it, and before anything runs in the paused program.
+
+New parameter annotations are added in the plugin: a `DataRequestDeclarationProcessor` reads the annotation, a
+`DataRequestProcessor` resolves it with JDI (`ch.moldexj.view.request`).
+
+## Views in jars: the view manifest
+
+`moldable-views-processor` is an annotation processor that writes `META-INF/moldexj/views`: every `@DebugView` method
+of the compilation with the annotations of its parameters. Register it explicitly (Gradle and javac 23+ don't run
+processors from the compile classpath):
+
+```kotlin
+dependencies {
+    implementation("ch.moldexj:moldable-views")
+    annotationProcessor("ch.moldexj:moldable-views-processor")
+}
+```
+
+The plugin reads the manifests of the project's libraries, and the helper reads all manifests on the debugged
+program's classpath. So a **library can ship views for its own exceptions**, and views are found even in jars the IDE
+does not know (views there that need debugger data say so). The processor works with Gradle's incremental compilation;
+a project with its own `DebugView` annotation passes `-Amoldexj.debugView=com.acme.DebugView`.
 
 ## Layout
 
 | Module | Runs in | Role |
 | --- | --- | --- |
 | `moldable-views` | your app (Java 8+) | `@DebugView` and `DebugViews.text / diff / table`. Optional: the plugin finds views by annotation **name**, so you can declare your own `@DebugView`. |
-| `moldable-snapshot-rt` | the **debugged JVM** | `MoldableSnapshot`: walks the chain, calls the `@DebugView` methods, returns one JSON string. Counterpart of the VS object source. |
+| `moldable-views-processor` | your build (javac 8+) | Annotation processor that writes the view manifest. |
+| `moldable-snapshot-rt` | the **debugged JVM** | `MoldableSnapshot`: walks the chain, calls the `@DebugView` methods with their parameters, returns one JSON string. Counterpart of the VS object source. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. |
 | `intellij-plugin` | IntelliJ IDEA | Loads the helper into the paused JVM, shows the dialog, opens it automatically at exception stops. |
 | `samples/checkout-demo` | – | Throws an `ApiContractMismatchException`, wraps it in an `IllegalStateException` that nothing catches. |
 
@@ -108,11 +150,15 @@ the program alive, and the helper can run there. One run is enough, and caught e
 ## Design notes
 
 - **No dependency needed in the app.** The plugin creates a `SecureClassLoader` in the debugged JVM (child of the
-  application's class loader), passes it the bytes of `MoldableSnapshot.class` from the plugin jar, and calls
-  `toJson`. This happens once per debug session. The helper is compiled for Java 8 and is a single class (no
-  lambdas or nested classes), so it loads into any JVM from its bytes alone.
-  IntelliJ's own helper mechanism (`DebuggerUtilsImpl.invokeHelperMethod`) is not used: in 2025.3 it only reads
-  helper classes from `idea_rt.jar`.
+  application's class loader), defines every class of `moldable-snapshot-rt` in it from the plugin jar, and calls
+  `MoldableSnapshot.toJson`. This happens once per debug session. The jar lists its classes in
+  `META-INF/moldexj/runtime-classes` (generated by the build); the plugin defines superclasses and interfaces first
+  (read with ASM), everything else resolves lazily. The module is compiled for Java 8 and uses only the JDK, so it
+  loads into any JVM from its bytes alone. IntelliJ's own helper mechanism (`DebuggerUtilsImpl.invokeHelperMethod`)
+  is not used: in 2025.3 it only reads helper classes from `idea_rt.jar`.
+- **Transport.** The plugin sends the views it knows as a small text spec (`view` / `bind` lines), the data resolved
+  for their parameters as one `byte[]` written with `DataOutputStream`, and the live objects that data refers to as
+  one `Object[]`: a few JDI calls, whatever the size. The helper answers with one JSON string.
 - **Duck typing.** Views are found by an annotation named `DebugView` (`value()` or `title()`, `priority()`).
   View results are read through `kind()`, `text()`, `expected()`, `actual()`, `columns()`, `rows()`. A view
   may also return a `String`, and anything else is shown with `toString()`.
@@ -141,6 +187,8 @@ the program alive, and the helper can run there. One run is enough, and caught e
   as error tabs. Make them public or open the package.
 - **Remote development (split mode)** is not handled: the action needs the backend `JavaValue`.
 - **Kotlin** works too: `@DebugView` on a Kotlin method of an exception class is found the same way.
-- Views for library exceptions are found in your project's sources only, not in libraries: a library cannot ship
-  views for its own exceptions yet.
+- Views in jars are found only if the jar was built with `moldable-views-processor`. Methods are matched by name and
+  parameter count, so overloads with the same count are not told apart.
+- Debugger data for views the IDE does not know (manifests found only in the debugged program) is not requested yet;
+  those views say so instead of running.
 - Next: **actions** next to views (for example "accept actual as expected", or re-run a request).
