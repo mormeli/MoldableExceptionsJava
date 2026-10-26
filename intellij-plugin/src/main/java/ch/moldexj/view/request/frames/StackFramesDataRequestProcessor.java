@@ -8,7 +8,9 @@ import com.intellij.debugger.jdi.LocalVariableProxyImpl;
 import com.intellij.debugger.jdi.StackFrameProxyImpl;
 import com.intellij.debugger.jdi.ThreadReferenceProxyImpl;
 import com.sun.jdi.AbsentInformationException;
+import com.sun.jdi.Field;
 import com.sun.jdi.Location;
+import com.sun.jdi.ObjectReference;
 import com.sun.jdi.Value;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,9 +21,9 @@ import java.util.Map;
 
 /**
  * Reads the stack of the throwing thread with plain JDI reads (no invocation in the debugged JVM): per frame the
- * location, {@code this}, the arguments and the visible local variables. Objects stay live references; the view
- * receives them as the objects themselves. The shape matches {@code DebugStack}, {@code DebugFrame} and
- * {@code DebugLocal} of moldable-views.
+ * location, {@code this}, the arguments and the visible local variables, and on request the fields of {@code this}.
+ * Objects stay live references; the view receives them as the objects themselves. The shape matches
+ * {@code DebugStack}, {@code DebugFrame} and {@code DebugLocal} of moldable-views.
  */
 public final class StackFramesDataRequestProcessor implements DataRequestProcessor<StackFramesDataRequestArguments> {
 
@@ -29,7 +31,8 @@ public final class StackFramesDataRequestProcessor implements DataRequestProcess
     static final int MAX_LOCALS = 64;
 
     @Override
-    public @NotNull ProvidedValue process(@NotNull StackFramesDataRequestArguments arguments, @NotNull DataRequestContext context) {
+    public @NotNull ProvidedValue process(
+            @NotNull DataRequestContext context, @NotNull StackFramesDataRequestArguments arguments) {
         ThreadReferenceProxyImpl thread = context.getThrowThread();
         if (thread == null) {
             return ProvidedValue.unavailable("This view needs the stack at the throw of the exception. It is only available"
@@ -45,7 +48,7 @@ public final class StackFramesDataRequestProcessor implements DataRequestProcess
         int count = Math.min(Math.min(arguments.depth(), MAX_FRAMES), frames.size());
         List<Object> result = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            result.add(frame(frames.get(i), i));
+            result.add(frame(frames.get(i), i, arguments.fields()));
         }
         Map<String, Object> stack = new LinkedHashMap<>();
         stack.put("frames", result);
@@ -54,7 +57,10 @@ public final class StackFramesDataRequestProcessor implements DataRequestProcess
         return ProvidedValue.of(stack);
     }
 
-    private static Map<String, Object> frame(StackFrameProxyImpl frame, int index) {
+    private static Map<String, Object> frame(
+            StackFrameProxyImpl frame,
+            int index,
+            boolean withFields) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("index", index);
         try {
@@ -68,11 +74,15 @@ public final class StackFramesDataRequestProcessor implements DataRequestProcess
             map.put("methodName", "?");
             map.put("line", -1);
         }
+        ObjectReference self;
         try {
-            map.put("thisObject", frame.thisObject()); // null in static methods
+            self = frame.thisObject(); // null in static methods
         } catch (EvaluateException ignored) {
-            map.put("thisObject", null);
+            self = null;
         }
+        map.put("thisObject", self);
+        map.put("fields", withFields && self != null ? fields(self) : List.of());
+        map.put("$lookup:field", List.of("fields", "name"));
         List<Object> locals = new ArrayList<>();
         boolean hasDebugInfo = true;
         try {
@@ -102,6 +112,20 @@ public final class StackFramesDataRequestProcessor implements DataRequestProcess
         map.put("hasDebugInfo", hasDebugInfo);
         map.put("$lookup:local", List.of("locals", "name"));
         return map;
+    }
+
+    /** The instance fields of {@code this}, inherited ones included: one JDI read for all values, no access checks. */
+    private static List<Object> fields(ObjectReference self) {
+        List<Field> fields = self.referenceType().allFields().stream()
+                .filter(field -> !field.isStatic())
+                .limit(MAX_LOCALS)
+                .toList();
+        Map<Field, Value> values = self.getValues(fields);
+        List<Object> result = new ArrayList<>(fields.size());
+        for (Field field : fields) {
+            result.add(local(field.name(), field.typeName(), false, values.get(field)));
+        }
+        return result;
     }
 
     private static Map<String, Object> local(String name, String typeName, boolean argument, Value value) {

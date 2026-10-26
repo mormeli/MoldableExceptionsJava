@@ -29,7 +29,8 @@ public class ConstraintViolationExceptionViews {
                         default -> "N/A";
                     }
                 ),
-                DebugViews.column("Value", ConstraintViolation::getInvalidValue));
+                DebugViews.column("Value", ConstraintViolation::getInvalidValue),
+                DebugViews.column("Hallo", e -> "Basti"));
     }
 
     /**

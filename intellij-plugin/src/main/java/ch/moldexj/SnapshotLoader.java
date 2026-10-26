@@ -1,10 +1,11 @@
 package ch.moldexj;
 
-import ch.moldexj.runtime.MoldableSnapshot;
+import ch.moldexj.debugee.HelperLoader;
+import ch.moldexj.runtime.MoldableException;
 import ch.moldexj.runtime.manifest.ViewManifest;
 import ch.moldexj.view.Parameter;
 import ch.moldexj.view.View;
-import ch.moldexj.view.finder.ViewIndex;
+import ch.moldexj.view.finder.MoldableExceptionsViewIndex;
 import ch.moldexj.view.request.DataRequestArguments;
 import ch.moldexj.view.request.DataRequestContext;
 import ch.moldexj.view.request.DataRequestProcessor;
@@ -37,7 +38,7 @@ import java.util.Map;
 
 /**
  * Takes a snapshot of an exception in the paused JVM: resolves the debugger data the views ask for, loads the helper
- * ({@link HelperLoader}) and calls {@link MoldableSnapshot#toJson(Throwable, String, byte[], Object[])} there.
+ * ({@link HelperLoader}) and calls {@link MoldableException#handleException(Throwable, String, byte[], Object[])} there.
  */
 public final class SnapshotLoader {
 
@@ -67,19 +68,22 @@ public final class SnapshotLoader {
      *       {@code Object[]} to the helper, which runs the views.</li>
      * </ol>
      *
-     * @param views       views with parameters, from {@link ViewIndex}
+     * @param views       views with parameters, from {@link MoldableExceptionsViewIndex}
      * @param throwThread the thread that threw the exception if the debugger is stopped at that throw, else null
      */
-    public static ExceptionSnapshot load(EvaluationContextImpl context, ObjectReference exception, List<View> views,
-                                         @Nullable ThreadReferenceProxyImpl throwThread) throws EvaluateException {
+    public static ExceptionSnapshot load(
+            EvaluationContextImpl context,
+            ObjectReference exception,
+            List<View> views,
+            @Nullable ThreadReferenceProxyImpl throwThread) throws EvaluateException {
         List<ProvidedValue> values = new ArrayList<>();
         String spec = spec(views, exception, new DataRequestContextImpl(context, exception, throwThread), values);
         DebuggeeMarshaller marshaller = new DebuggeeMarshaller();
         byte[] injected = marshaller.write(values);
 
         ClassType helper = HelperLoader.entryClass(context, exception.virtualMachine());
-        Method toJson = DebuggerUtils.findMethod(helper, "toJson", TO_JSON_SIGNATURE);
-        if (toJson == null) {
+        Method handleException = DebuggerUtils.findMethod(helper, "handleException", TO_JSON_SIGNATURE);
+        if (handleException == null) {
             throw new EvaluateException("MoldableSnapshot.toJson not found in the loaded helper");
         }
         Value json;
@@ -87,7 +91,7 @@ public final class SnapshotLoader {
             StringReference specMirror = mirrors.string(spec);
             ArrayReference injectedMirror = values.isEmpty() ? null : mirrors.bytes(injected);
             ArrayReference handles = marshaller.handles().isEmpty() ? null : mirrors.objects(marshaller.handles());
-            json = context.getDebugProcess().invokeMethod(context, helper, toJson,
+            json = context.getDebugProcess().invokeMethod(context, helper, handleException,
                     Arrays.asList(exception, specMirror, injectedMirror, handles));
         } catch (EvaluateException e) {
             throw e;
@@ -105,7 +109,11 @@ public final class SnapshotLoader {
      * The view spec the helper reads ({@code ViewSpec} in moldable-snapshot-rt): per view a {@code view} line and one
      * {@code bind} line per parameter. Resolves the debugger data on the way and adds it to {@code values}.
      */
-    private static String spec(List<View> views, ObjectReference exception, DataRequestContext context, List<ProvidedValue> values) {
+    private static String spec(
+            List<View> views,
+            ObjectReference exception,
+            DataRequestContext context,
+            List<ProvidedValue> values) {
         Map<DataRequestArguments, Integer> resolved = new HashMap<>();
         StringBuilder spec = new StringBuilder();
         for (View view : views) {
@@ -153,7 +161,7 @@ public final class SnapshotLoader {
     @SuppressWarnings("unchecked")
     private static ProvidedValue resolve(ParameterSource.Provided provided, DataRequestContext context) {
         try {
-            return ((DataRequestProcessor<DataRequestArguments>) provided.processor()).process(provided.arguments(), context);
+            return ((DataRequestProcessor<DataRequestArguments>) provided.processor()).process(context, provided.arguments());
         } catch (RuntimeException e) {
             LOG.warn("Moldable Exceptions: " + provided.arguments() + " failed", e);
             return ProvidedValue.unavailable("The debugger could not provide " + provided.arguments() + ": " + e);

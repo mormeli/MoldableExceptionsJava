@@ -1,5 +1,6 @@
 package ch.moldexj.view.annotation;
 
+import ch.moldexj.view.context.DebugFrame;
 import ch.moldexj.view.context.DebugStack;
 
 import java.lang.annotation.Documented;
@@ -32,4 +33,11 @@ public @interface StackFrames {
 
     /** How many frames to read, starting at the throw site. */
     int depth();
+
+    /**
+     * Also read the fields of {@code this} in each frame ({@link DebugFrame#fields()}). The debugger reads them, so
+     * this includes private fields of JDK classes, which a view cannot read by reflection since Java 9. Costs one more
+     * read per frame.
+     */
+    boolean fields() default false;
 }

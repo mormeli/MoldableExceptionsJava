@@ -2,6 +2,7 @@ package ch.moldexj.view.request;
 
 import ch.moldexj.view.request.exception.ExceptionDataRequestDeclarationProcessor;
 import ch.moldexj.view.request.frames.StackFramesDataRequestDeclarationProcessor;
+import ch.moldexj.view.request.psi.PsiQueryDataRequestDeclarationProcessor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ public final class DataRequestRegistry {
     public DataRequestRegistry() {
         register(new ExceptionDataRequestDeclarationProcessor());
         register(new StackFramesDataRequestDeclarationProcessor());
+        register(new PsiQueryDataRequestDeclarationProcessor());
     }
 
     public void register(@NotNull DataRequestDeclarationProcessor declarationProcessor) {

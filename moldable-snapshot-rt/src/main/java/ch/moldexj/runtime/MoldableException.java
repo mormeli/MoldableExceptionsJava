@@ -7,7 +7,7 @@ import java.util.Set;
 
 /**
  * Runs INSIDE THE DEBUGGED JVM. The IntelliJ plugin defines the classes of this module in the paused program from their
- * bytes (see {@code SnapshotLoader}) and calls {@link #toJson(Throwable, String, byte[], Object[])}. It is the Java
+ * bytes (see {@code SnapshotLoader}) and calls {@link #handleException(Throwable, String, byte[], Object[])}. It is the Java
  * counterpart of the Visual Studio object source.
  *
  * <p>Constraints, because the classes are defined into an arbitrary JVM: Java 8 bytecode, and no dependencies beyond the
@@ -20,14 +20,14 @@ import java.util.Set;
  *   <li>the manifests of all jars on the classpath, for views the IDE does not know ({@link ClasspathManifests}).</li>
  * </ul>
  */
-public final class MoldableSnapshot {
+public final class MoldableException {
 
-    private MoldableSnapshot() {
+    private MoldableException() {
     }
 
     /** Entry point without views from the IDE. Never throws: problems end up in the snapshot as notes or error views. */
-    public static String toJson(Throwable root) {
-        return toJson(root, "", null, null);
+    public static String handleException(Throwable root) {
+        return handleException(root, "", null, null);
     }
 
     /**
@@ -37,7 +37,11 @@ public final class MoldableSnapshot {
      * @param injected the values for {@code bind ... value k} ({@link InjectedValues}), or null
      * @param handles  the live objects referenced from {@code injected}, or null
      */
-    public static String toJson(Throwable root, String spec, byte[] injected, Object[] handles) {
+    public static String handleException(
+            Throwable root,
+            String spec,
+            byte[] injected,
+            Object[] handles) {
         List<String> notes = new ArrayList<>();
         List<String> chain = new ArrayList<>();
         try {

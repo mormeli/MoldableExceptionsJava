@@ -17,12 +17,12 @@ import java.util.List;
  * Creates strings and arrays in the debugged JVM, protected from its garbage collector until {@link #close()}: nothing
  * in the program references a new mirror, so the GC could take it before the invocation that uses it.
  */
-final class DebuggeeMirrors implements AutoCloseable {
+public final class DebuggeeMirrors implements AutoCloseable {
 
     private final VirtualMachine vm;
     private final List<ObjectReference> mirrors = new ArrayList<>();
 
-    DebuggeeMirrors(@NotNull VirtualMachine vm) {
+    public DebuggeeMirrors(@NotNull VirtualMachine vm) {
         this.vm = vm;
     }
 

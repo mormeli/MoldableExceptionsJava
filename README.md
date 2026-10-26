@@ -84,6 +84,13 @@ debugger is stopped at the throw of that exception: for a cause in the chain, or
 breakpoint, the tab says why it is not available. The plugin resolves each request once per stop, only if a view that
 applies to the exception asks for it, and before anything runs in the paused program.
 
+`@StackFrames(depth = n, fields = true)` adds the fields of `this` in each frame (`DebugFrame.fields()`). The debugger
+reads them, so this includes private fields of JDK classes, which a view cannot read by reflection. The regex views in
+`samples/checkout-demo` use it for exceptions thrown inside a library: `PatternSyntaxExceptionViews` doesn't re-parse
+the pattern. It shows what `java.util.regex.Pattern`'s parser was doing from its own frames (which group, character
+class or repetition it was in, with its locals) and fields (position, flags, named groups so far), and the line of our
+code that passed the regex, with a literal replacement for it (`template.replace("{name}", "Ada")`).
+
 New parameter annotations are added in the plugin: a `DataRequestDeclarationProcessor` reads the annotation, a
 `DataRequestProcessor` resolves it with JDI (`ch.moldexj.view.request`).
 
@@ -111,7 +118,7 @@ a project with its own `DebugView` annotation passes `-Amoldexj.debugView=com.ac
 | --- | --- | --- |
 | `moldable-views` | your app (Java 8+) | `@DebugView` and `DebugViews.text / diff / table`. Optional: the plugin finds views by annotation **name**, so you can declare your own `@DebugView`. |
 | `moldable-views-processor` | your build (javac 8+) | Annotation processor that writes the view manifest. |
-| `moldable-snapshot-rt` | the **debugged JVM** | `MoldableSnapshot`: walks the chain, calls the `@DebugView` methods with their parameters, returns one JSON string. Counterpart of the VS object source. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. |
+| `moldable-snapshot-rt` | the **debugged JVM** | `MoldableException`: walks the chain, calls the `@DebugView` methods with their parameters, returns one JSON string. Counterpart of the VS object source. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. See [its README](moldable-snapshot-rt/README.md). |
 | `intellij-plugin` | IntelliJ IDEA | Loads the helper into the paused JVM, shows the dialog, opens it automatically at exception stops. |
 | `samples/checkout-demo` | – | Throws an `ApiContractMismatchException`, wraps it in an `IllegalStateException` that nothing catches. |
 
@@ -142,7 +149,7 @@ the program alive, and the helper can run there. One run is enough, and caught e
 
 | Visual Studio version | IntelliJ version |
 | --- | --- |
-| object source DLL, loaded by the debugger | `MoldableSnapshot`, defined by the plugin in a fresh class loader inside the debugged JVM |
+| object source DLL, loaded by the debugger | `MoldableException`, defined by the plugin in a fresh class loader inside the debugged JVM |
 | `DebuggerVisualizerProvider` + Remote UI | `MoldableViewsDialog` (Swing, IntelliJ diff viewer) |
 | magnifier on `$exception` | **Show Moldable Views** in the Variables context menu |
 | `BreakAtThrowPackage` (two runs) | own "uncaught" request: stops only at moldable exceptions, no breakpoint needed (one run) |

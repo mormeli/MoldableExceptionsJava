@@ -28,19 +28,18 @@ import java.util.Map;
  * in the debugged JVM still reads the manifests on the program's classpath, for views the IDE does not know.
  */
 @Service(Service.Level.PROJECT)
-public final class ViewIndex {
-
-    private static final Logger LOG = Logger.getInstance(ViewIndex.class);
+public final class MoldableExceptionsViewIndex {
+    private static final Logger LOG = Logger.getInstance(MoldableExceptionsViewIndex.class);
 
     private final Project project;
     private final DataRequestRegistry registry = new DataRequestRegistry();
 
-    public ViewIndex(@NotNull Project project) {
+    public MoldableExceptionsViewIndex(@NotNull Project project) {
         this.project = project;
     }
 
-    public static ViewIndex getInstance(@NotNull Project project) {
-        return project.getService(ViewIndex.class);
+    public static MoldableExceptionsViewIndex getInstance(@NotNull Project project) {
+        return project.getService(MoldableExceptionsViewIndex.class);
     }
 
     /** Safe on the debugger thread. Empty while the IDE is indexing or if the search fails. */

@@ -27,6 +27,12 @@ public interface DebugFrame {
     /** The argument or local variable with this name, or null. */
     DebugLocal local(String name);
 
+    /** The fields of {@code this}, inherited ones included; empty unless requested with {@code @StackFrames(fields = true)}. */
+    List<DebugLocal> fields();
+
+    /** The field of {@code this} with this name, or null. */
+    DebugLocal field(String name);
+
     /** False if the class was compiled without local variable information: then only arguments named arg0, arg1, ... */
     boolean hasDebugInfo();
 }

@@ -1,6 +1,7 @@
-package ch.moldexj;
+package ch.moldexj.debugee;
 
-import ch.moldexj.runtime.MoldableSnapshot;
+import ch.moldexj.DebuggeeMirrors;
+import ch.moldexj.runtime.MoldableException;
 import com.intellij.debugger.engine.DebugProcess;
 import com.intellij.debugger.engine.DebuggerUtils;
 import com.intellij.debugger.engine.evaluation.EvaluateException;
@@ -25,7 +26,7 @@ import java.util.WeakHashMap;
  * <p>Only plain JDI and long-stable IntelliJ APIs are used: IntelliJ's own helper loader
  * ({@code DebuggerUtilsImpl.invokeHelperMethod}) only reads helper classes from {@code idea_rt.jar} in 2025.3.
  */
-final class HelperLoader {
+public final class HelperLoader {
 
     private static final String DEFINE_CLASS_SIGNATURE = "(Ljava/lang/String;[BII)Ljava/lang/Class;";
 
@@ -35,8 +36,8 @@ final class HelperLoader {
     private HelperLoader() {
     }
 
-    /** {@link MoldableSnapshot} in the debugged program; defines the module first if needed. */
-    static ClassType entryClass(EvaluationContextImpl context, VirtualMachine vm) throws EvaluateException {
+    /** {@link MoldableException} in the debugged program; defines the module first if needed. */
+    public static ClassType entryClass(EvaluationContextImpl context, VirtualMachine vm) throws EvaluateException {
         DebugProcess process = context.getDebugProcess();
         ClassLoaderReference appLoader = context.getClassLoader();
         long key = appLoader == null ? 0 : appLoader.uniqueID();
@@ -53,7 +54,7 @@ final class HelperLoader {
             defineClass(context, loader, runtimeClass.getKey(), runtimeClass.getValue());
         }
 
-        String entry = MoldableSnapshot.class.getName();
+        String entry = MoldableException.class.getName();
         ReferenceType type = process.findClass(context, entry, loader);
         if (!(type instanceof ClassType classType)) {
             throw new EvaluateException("Could not load " + entry + " into the debugged program");

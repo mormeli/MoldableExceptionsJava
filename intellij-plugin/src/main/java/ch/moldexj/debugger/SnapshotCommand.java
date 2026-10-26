@@ -3,7 +3,7 @@ package ch.moldexj.debugger;
 import ch.moldexj.ExceptionSnapshot;
 import ch.moldexj.SnapshotLoader;
 import ch.moldexj.view.MoldableViewsDialog;
-import ch.moldexj.view.finder.ViewIndex;
+import ch.moldexj.view.finder.MoldableExceptionsViewIndex;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
 import com.intellij.debugger.engine.events.SuspendContextCommandImpl;
@@ -67,7 +67,7 @@ public final class SnapshotCommand extends SuspendContextCommandImpl {
             EvaluationContextImpl context = givenContext != null
                     ? givenContext
                     : new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
-            snapshot = SnapshotLoader.load(context, exception, ViewIndex.getInstance(project).views(),
+            snapshot = SnapshotLoader.load(context, exception, MoldableExceptionsViewIndex.getInstance(project).views(),
                     SnapshotLoader.throwThread(suspendContext, exception));
         } catch (Exception | LinkageError e) {
             // LinkageError: e.g. a library (Gson) not visible to the plugin, or the helper class failing to load.

@@ -9,6 +9,7 @@ public final class PatternSyntaxExceptionDemo {
 
     public static void main(String[] args) {
         String template = "Hello {name}, your order {orderId} has shipped.";
+        var q = template.split("[b-chm-pP]{5at|ot");
         String mail = template.replaceAll("{name}", "Ada").replaceAll("{orderId}", "A-1042");
         System.out.println(mail);
     }

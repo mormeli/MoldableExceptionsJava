@@ -27,7 +27,7 @@ import java.util.Map;
  * all data, read by {@code InjectedValues} in moldable-snapshot-rt (the tags are documented there), and one list of
  * the live objects it refers to. Two mirrors in the debugged JVM, however large the data.
  */
-final class DebuggeeMarshaller {
+public final class DebuggeeMarshaller {
 
     private final List<ObjectReference> handles = new ArrayList<>();
     private final Map<ObjectReference, Integer> handleIndex = new HashMap<>();

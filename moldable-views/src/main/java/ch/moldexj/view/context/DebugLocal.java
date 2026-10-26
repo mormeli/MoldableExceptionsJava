@@ -1,6 +1,6 @@
 package ch.moldexj.view.context;
 
-/** An argument or local variable of a {@link DebugFrame}. */
+/** An argument, local variable or field of {@code this} in a {@link DebugFrame}. */
 public interface DebugLocal {
 
     String name();

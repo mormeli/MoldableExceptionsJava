@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /** Details, Stack trace and Fields: shown for every exception, after its own views. */
-final class BuiltInViews {
+public final class BuiltInViews {
 
     private BuiltInViews() {
     }

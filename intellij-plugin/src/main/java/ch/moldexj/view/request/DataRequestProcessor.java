@@ -11,5 +11,5 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface DataRequestProcessor<A extends DataRequestArguments> {
 
-    @NotNull ProvidedValue process(@NotNull A arguments, @NotNull DataRequestContext context);
+    @NotNull ProvidedValue process(@NotNull DataRequestContext context, @NotNull A arguments);
 }

@@ -3,7 +3,7 @@ package ch.moldexj.runtime;
 import java.util.List;
 
 /** Just enough JSON writing for the snapshot; the plugin parses it with Gson. */
-final class Json {
+public final class Json {
 
     private Json() {
     }

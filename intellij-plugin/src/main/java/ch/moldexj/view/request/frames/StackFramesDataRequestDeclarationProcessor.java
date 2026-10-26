@@ -23,6 +23,7 @@ public final class StackFramesDataRequestDeclarationProcessor implements DataReq
         if (depth <= 0) {
             return new ParameterSource.Unsupported("@StackFrames needs a depth of at least 1, not " + depth + ".");
         }
-        return new ParameterSource.Provided(new StackFramesDataRequestArguments(depth), PROCESSOR);
+        boolean fields = Boolean.TRUE.equals(annotation.attribute("fields")); // default false, also for older manifests
+        return new ParameterSource.Provided(new StackFramesDataRequestArguments(depth, fields), PROCESSOR);
     }
 }

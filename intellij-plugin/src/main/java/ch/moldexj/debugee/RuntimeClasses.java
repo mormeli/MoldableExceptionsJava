@@ -1,6 +1,6 @@
-package ch.moldexj;
+package ch.moldexj.debugee;
 
-import ch.moldexj.runtime.MoldableSnapshot;
+import ch.moldexj.runtime.MoldableException;
 import com.intellij.debugger.engine.evaluation.EvaluateException;
 import org.jetbrains.org.objectweb.asm.ClassReader;
 
@@ -59,7 +59,7 @@ final class RuntimeClasses {
     }
 
     private static List<String> names() throws EvaluateException {
-        try (InputStream in = MoldableSnapshot.class.getClassLoader().getResourceAsStream(LIST)) {
+        try (InputStream in = MoldableException.class.getClassLoader().getResourceAsStream(LIST)) {
             if (in == null) {
                 throw new EvaluateException(LIST + " is missing from the plugin");
             }
@@ -78,7 +78,7 @@ final class RuntimeClasses {
 
     private static byte[] bytes(String name) throws EvaluateException {
         String resource = name.replace('.', '/') + ".class";
-        try (InputStream in = MoldableSnapshot.class.getClassLoader().getResourceAsStream(resource)) {
+        try (InputStream in = MoldableException.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
                 throw new EvaluateException("Class file " + resource + " is missing from the plugin");
             }

@@ -2,7 +2,7 @@ package ch.moldexj.debugger;
 
 import ch.moldexj.ExceptionSnapshot;
 import ch.moldexj.SnapshotLoader;
-import ch.moldexj.view.finder.ViewIndex;
+import ch.moldexj.view.finder.MoldableExceptionsViewIndex;
 import com.intellij.debugger.engine.DebugProcessImpl;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
@@ -53,7 +53,9 @@ public final class UncaughtMoldableExceptionRequestor implements FilteredRequest
     }
 
     @Override
-    public boolean processLocatableEvent(@NotNull SuspendContextCommandImpl action, @Nullable LocatableEvent event) {
+    public boolean processLocatableEvent(
+            @NotNull SuspendContextCommandImpl action,
+            @Nullable LocatableEvent event) {
         if (!(event instanceof ExceptionEvent) || !isEnabled()) {
             return false;
         }
@@ -65,8 +67,10 @@ public final class UncaughtMoldableExceptionRequestor implements FilteredRequest
             // Same as a breakpoint condition: evaluate in the paused program, decide whether to stop.
             EvaluationContextImpl context = new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
             ExceptionEvent exceptionEvent = (ExceptionEvent) event;
-            ExceptionSnapshot snapshot = SnapshotLoader.load(context, exceptionEvent.exception(),
-                    ViewIndex.getInstance(project).views(),
+            ExceptionSnapshot snapshot = SnapshotLoader.load(
+                    context,
+                    exceptionEvent.exception(),
+                    MoldableExceptionsViewIndex.getInstance(project).views(),
                     suspendContext.getVirtualMachineProxy().getThreadReferenceProxy(exceptionEvent.thread()));
             LOG.info("Moldable Exceptions: uncaught " + (snapshot.chain.isEmpty() ? "?" : snapshot.chain.get(0).type)
                     + ", moldable=" + snapshot.hasMoldable());
