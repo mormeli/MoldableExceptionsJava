@@ -1,9 +1,9 @@
 package ch.moldexj.processor;
 
-import ch.moldexj.runtime.manifest.ViewManifest;
-import ch.moldexj.runtime.manifest.ViewManifest.AnnotationEntry;
-import ch.moldexj.runtime.manifest.ViewManifest.ParamEntry;
-import ch.moldexj.runtime.manifest.ViewManifest.ViewEntry;
+import ch.moldexj.runtime.view.ViewManifest;
+import ch.moldexj.runtime.view.ViewManifest.AnnotationEntry;
+import ch.moldexj.runtime.view.ViewManifest.ParamEntry;
+import ch.moldexj.runtime.view.ViewManifest.ViewEntry;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;

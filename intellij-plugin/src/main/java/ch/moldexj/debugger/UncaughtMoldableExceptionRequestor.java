@@ -1,8 +1,7 @@
 package ch.moldexj.debugger;
 
-import ch.moldexj.ExceptionSnapshot;
-import ch.moldexj.SnapshotLoader;
-import ch.moldexj.view.finder.MoldableExceptionsViewIndex;
+import ch.moldexj.debuggee.DebuggeeMolder;
+import ch.moldexj.debuggee.DebuggeePlan;
 import com.intellij.debugger.engine.DebugProcessImpl;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
@@ -22,9 +21,9 @@ import org.jetbrains.annotations.Nullable;
  *
  * <p>When a debug session attaches, the plugin registers its own exception requestArguments (uncaught only, all exception
  * types) with IntelliJ's requestArguments manager, the same mechanism breakpoints use. The JVM reports "uncaught" at the throw,
- * so the program is still alive there. This requestor then takes the snapshot, like a breakpoint condition, and
- * stops only if an exception in the chain has views: its own {@code @DebugView} methods, or static views in the
- * project (e.g. for PatternSyntaxException). Other uncaught exceptions behave exactly as without the plugin.
+ * so the program is still alive there. This requestor then asks the program for a plan, like a breakpoint condition, and
+ * stops only if an exception in the chain has views: its own {@code @DebugView} methods, or static views declared
+ * in a view manifest (e.g. for PatternSyntaxException). Other uncaught exceptions behave exactly as without the plugin.
  */
 public final class UncaughtMoldableExceptionRequestor implements FilteredRequestor {
 
@@ -67,14 +66,12 @@ public final class UncaughtMoldableExceptionRequestor implements FilteredRequest
             // Same as a breakpoint condition: evaluate in the paused program, decide whether to stop.
             EvaluationContextImpl context = new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
             ExceptionEvent exceptionEvent = (ExceptionEvent) event;
-            ExceptionSnapshot snapshot = SnapshotLoader.load(
-                    context,
-                    exceptionEvent.exception(),
-                    MoldableExceptionsViewIndex.getInstance(project).views(),
-                    suspendContext.getVirtualMachineProxy().getThreadReferenceProxy(exceptionEvent.thread()));
-            LOG.info("Moldable Exceptions: uncaught " + (snapshot.chain.isEmpty() ? "?" : snapshot.chain.get(0).type)
-                    + ", moldable=" + snapshot.hasMoldable());
-            return snapshot.hasMoldable();
+            // Only the plan: whether to stop. The snapshot is taken after the stop, by SnapshotCommand.
+            try (DebuggeePlan plan = DebuggeeMolder.plan(context, exceptionEvent.exception())) {
+                LOG.info("Moldable Exceptions: uncaught " + exceptionEvent.exception().referenceType().name()
+                        + ", moldable=" + plan.moldable());
+                return plan.moldable();
+            }
         } catch (Exception | LinkageError e) {
             LOG.warn("Moldable Exceptions: could not check the uncaught exception", e);
             return false; // never stop the program because of a plugin problem

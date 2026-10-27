@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The JSON produced by {@code ch.moldexj.runtime.MoldableSnapshot} in the debugged JVM, as parsed by Gson.
+ * The JSON produced by {@code ch.moldexj.runtime.ExceptionMolder.mold} in the debugged JVM, as parsed by Gson.
  * Public fields on purpose: these are plain data holders.
  */
 public final class ExceptionSnapshot {

@@ -1,9 +1,10 @@
 package ch.moldexj.debugger;
 
 import ch.moldexj.ExceptionSnapshot;
-import ch.moldexj.SnapshotLoader;
+import ch.moldexj.data.impl.ProviderContextImpl;
+import ch.moldexj.debuggee.DebuggeeMolder;
+import ch.moldexj.debuggee.DebuggeePlan;
 import ch.moldexj.view.MoldableViewsDialog;
-import ch.moldexj.view.finder.MoldableExceptionsViewIndex;
 import com.intellij.debugger.engine.SuspendContextImpl;
 import com.intellij.debugger.engine.evaluation.EvaluationContextImpl;
 import com.intellij.debugger.engine.events.SuspendContextCommandImpl;
@@ -60,15 +61,20 @@ public final class SnapshotCommand extends SuspendContextCommandImpl {
     public void contextAction(@NotNull SuspendContextImpl suspendContext) {
         ExceptionSnapshot snapshot;
         try {
-            if (!SnapshotLoader.isThrowable(exception)) {
+            if (!DebuggeeMolder.isThrowable(exception)) {
                 report("The selected value is not a Throwable.");
                 return;
             }
             EvaluationContextImpl context = givenContext != null
                     ? givenContext
                     : new EvaluationContextImpl(suspendContext, suspendContext.getFrameProxy());
-            snapshot = SnapshotLoader.load(context, exception, MoldableExceptionsViewIndex.getInstance(project).views(),
-                    SnapshotLoader.throwThread(suspendContext, exception));
+            try (DebuggeePlan plan = DebuggeeMolder.plan(context, exception)) {
+                if (automatic && !plan.moldable()) {
+                    return; // plain exceptions keep IntelliJ's normal behavior
+                }
+                snapshot = DebuggeeMolder.mold(context, plan, new ProviderContextImpl(context, exception,
+                        DebuggeeMolder.throwThread(suspendContext, exception)));
+            }
         } catch (Exception | LinkageError e) {
             // LinkageError: e.g. a library (Gson) not visible to the plugin, or the helper class failing to load.
             LOG.warn("Moldable Exceptions: snapshot failed", e);
@@ -77,9 +83,6 @@ public final class SnapshotCommand extends SuspendContextCommandImpl {
         }
 
         LOG.info("Moldable Exceptions: snapshot has " + snapshot.chain.size() + " exception(s), moldable=" + snapshot.hasMoldable());
-        if (automatic && !snapshot.hasMoldable()) {
-            return; // plain exceptions keep IntelliJ's normal behavior
-        }
         ApplicationManager.getApplication().invokeLater(
                 () -> MoldableViewsDialog.open(project, snapshot, origin, automatic),
                 project.getDisposed());
