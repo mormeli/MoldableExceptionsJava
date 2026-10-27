@@ -167,7 +167,7 @@ public final class DebugViewProcessor extends AbstractProcessor {
             FileObject file = processingEnv.getFiler().createResource(StandardLocation.CLASS_OUTPUT, "", ViewManifest.PATH);
             Writer writer = file.openWriter();
             try {
-                ViewManifest.write(writer, new ArrayList<ViewEntry>(all.values()));
+                ViewManifest.write(writer, new ArrayList<>(all.values()));
             } finally {
                 writer.close();
             }

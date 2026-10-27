@@ -23,7 +23,7 @@ public final class ViewMethod {
     public final String title;
     public final int priority;
 
-    ViewMethod(Method method, ParameterDeclaration[] parameters, Annotation debugView) {
+    public ViewMethod(Method method, ParameterDeclaration[] parameters, Annotation debugView) {
         this.method = method;
         this.parameters = parameters;
         String title = firstNonEmpty(Reflection.readString(debugView, "value"), Reflection.readString(debugView, "title"));
@@ -36,13 +36,13 @@ public final class ViewMethod {
      * Loads the declared classes and finds their methods. A method matches by name, static-ness and parameter count,
      * and must carry an annotation named DebugView.
      */
-    static List<ViewMethod> resolve(List<ViewDeclaration> declarations, List<String> notes) {
+    static List<ViewMethod> resolve(List<ViewDeclaration> declarations, List<String> diagnostics) {
         List<ViewMethod> result = new ArrayList<>();
         Set<Method> added = new HashSet<>();
         for (ViewDeclaration declaration : declarations) {
             Class<?> owner = Reflection.loadClass(declaration.className);
             if (owner == null) {
-                notes.add("Views in " + declaration.className + " are not on the classpath of the debugged program; skipped.");
+                diagnostics.add("Views in " + declaration.className + " are not on the classpath of the debugged program; skipped.");
                 continue;
             }
             Method[] methods;

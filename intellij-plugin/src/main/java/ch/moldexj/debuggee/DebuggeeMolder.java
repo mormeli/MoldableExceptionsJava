@@ -78,6 +78,7 @@ public final class DebuggeeMolder {
     public static @NotNull DebuggeePlan plan(
             @NotNull EvaluationContextImpl context,
             @NotNull ObjectReference exception) throws EvaluateException {
+        // Inject our helper code into the debuggee.
         ClassType helper = HelperLoader.entryClass(context, exception.virtualMachine());
         Value result = context.getDebugProcess().invokeMethod(context, helper, method(helper, "plan", PLAN_SIGNATURE),
                 List.of(exception));

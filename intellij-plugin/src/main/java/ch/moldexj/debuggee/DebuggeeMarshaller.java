@@ -37,9 +37,9 @@ public final class DebuggeeMarshaller {
         try (DataOutputStream out = new DataOutputStream(bytes)) {
             out.writeInt(values.size());
             for (ProvidedValue value : values) {
-                if (value instanceof ProvidedValue.Unavailable unavailable) {
+                if (value instanceof ProvidedValue.Unavailable(String reason)) {
                     out.writeByte('u');
-                    writeString(out, unavailable.reason());
+                    writeString(out, reason);
                 } else {
                     write(out, ((ProvidedValue.Available) value).tree());
                 }

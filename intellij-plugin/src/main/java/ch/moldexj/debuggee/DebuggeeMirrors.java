@@ -26,12 +26,12 @@ public final class DebuggeeMirrors implements AutoCloseable {
         this.vm = vm;
     }
 
-    StringReference string(String value) {
+    public StringReference string(String value) {
         return protect(vm.mirrorOf(value));
     }
 
     /** A byte[] with the content: one JDI command for the values, whatever the size. */
-    ArrayReference bytes(byte[] content) throws Exception {
+    public ArrayReference bytes(byte[] content) throws Exception {
         List<Value> values = new ArrayList<>(content.length);
         for (byte b : content) {
             values.add(vm.mirrorOf(b));
@@ -39,7 +39,7 @@ public final class DebuggeeMirrors implements AutoCloseable {
         return array("byte[]", values);
     }
 
-    ArrayReference objects(List<? extends ObjectReference> elements) throws Exception {
+    public ArrayReference objects(List<? extends ObjectReference> elements) throws Exception {
         return array("java.lang.Object[]", elements);
     }
 

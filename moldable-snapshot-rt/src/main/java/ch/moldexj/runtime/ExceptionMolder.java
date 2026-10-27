@@ -48,23 +48,32 @@ public final class ExceptionMolder {
     private ExceptionMolder() {
     }
 
-    /** Finds the views of the chain and the debugger data they need. Never throws: problems end up in the notes. */
+    /***
+     * Finds the views of the chain and the debugger data they need. Never throws: problems end up in the notes.
+     * @param root The throwable to collect thew MoldPlan for.
+     * @return The {@see MoldPlan} which is used to create the final view.
+     */
     public static MoldPlan plan(Throwable root) {
-        List<String> notes = new ArrayList<>();
-        List<PlannedNode> nodes = new ArrayList<>();
+        List<String> diagnostics = new ArrayList<>();
+        List<PlannedNode> nodes = Collections.emptyList();
         RequestTable requests = new RequestTable();
         try {
-            List<ViewMethod> declared = ViewCatalog.declared(notes);
-            nodes = new ChainWalker(root, notes).walk();
+            // Collect all available views.
+            List<ViewMethod> declared = ViewCatalog.declared(diagnostics);
+
+            // Collect the exception / cause / suppression chain.
+            // Then iterate over the collected nodes (depth first tree) and find available views.
+            // In the process we collect the required data to render said view.
+            nodes = new ChainWalker(root, diagnostics).walk();
             for (PlannedNode node : nodes) {
                 for (ViewMethod view : ViewCatalog.viewsFor(node.exception, declared)) {
                     node.views.add(new PlannedView(view, bindings(view, node.isRoot, requests)));
                 }
             }
         } catch (Throwable t) {
-            notes.add("Finding the views failed: " + Safe.describe(t));
+            diagnostics.add("Finding the views failed: " + Safe.describe(t));
         }
-        return new MoldPlan(root, nodes, notes, requests);
+        return new MoldPlan(root, nodes, diagnostics, requests);
     }
 
     /**
@@ -75,23 +84,24 @@ public final class ExceptionMolder {
      * @param handles the live objects referenced from {@code data}, or null
      */
     public static String mold(MoldPlan plan, byte[] data, Object[] handles) {
-        List<String> notes = new ArrayList<>();
+        List<String> diagnostics = new ArrayList<>();
         List<String> chain = new ArrayList<>();
         try {
-            notes.addAll(plan.notes);
+            diagnostics.addAll(plan.notes);
+
             List<Object> values = InjectedValues.read(data, handles);
             if (values.size() != plan.requestCount) {
-                notes.add("The debugger sent " + values.size() + " values for " + plan.requestCount + " requests.");
-                values = Collections.<Object>nCopies(plan.requestCount, new Unavailable("The debugger did not send this value."));
+                diagnostics.add("The debugger sent " + values.size() + " values for " + plan.requestCount + " requests.");
+                values = Collections.nCopies(plan.requestCount, new Unavailable("The debugger did not send this value."));
             }
             ViewRunner runner = new ViewRunner(values);
             for (PlannedNode node : plan.nodes) {
                 chain.add(runner.render(node));
             }
         } catch (Throwable t) {
-            notes.add("Snapshot failed: " + Safe.describe(t));
+            diagnostics.add("Snapshot failed: " + Safe.describe(t));
         }
-        return "{\"chain\":" + Json.array(chain) + ",\"notes\":" + Json.strings(notes) + "}";
+        return "{\"chain\":" + Json.array(chain) + ",\"notes\":" + Json.strings(diagnostics) + "}";
     }
 
     private static Binding[] bindings(ViewMethod view, boolean isRoot, RequestTable requests) {

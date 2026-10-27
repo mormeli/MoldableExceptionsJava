@@ -38,8 +38,11 @@ public final class HelperLoader {
     /** {@link ExceptionMolder} in the debugged program; defines the module first if needed. */
     public static ClassType entryClass(EvaluationContextImpl context, VirtualMachine vm) throws EvaluateException {
         DebugProcess process = context.getDebugProcess();
-        ClassLoaderReference appLoader = context.getClassLoader();
-        long key = appLoader == null ? 0 : appLoader.uniqueID();
+
+        // Try to fetch a cached class type of our entry class.
+        // We do so using the uniqueID of the class loaded of the class whose method is running in the current frame.
+        ClassLoaderReference classLoader = context.getClassLoader();
+        long key = classLoader == null ? 0 : classLoader.uniqueID();
         synchronized (LOADED) {
             ClassType cached = LOADED.computeIfAbsent(vm, k -> new HashMap<>()).get(key);
             if (cached != null && isUsable(cached)) {
@@ -47,12 +50,16 @@ public final class HelperLoader {
             }
         }
 
+        // Otherwise we create a new class loader and load inject our helper into the debuggee using the
+        // runtime-classes manifest we generate using gradle.
         ClassLoaderReference loader = ClassLoadingUtils.getClassLoader(context, process);
         loader.disableCollection(); // keep it, and the classes defined in it, for the rest of the debug session
         for (Map.Entry<String, byte[]> runtimeClass : RuntimeClasses.inDefinitionOrder().entrySet()) {
+            // Load each class into the debuggee.
             defineClass(context, loader, runtimeClass.getKey(), runtimeClass.getValue());
         }
 
+        // Get the reference type of our entry class.
         String entry = ExceptionMolder.class.getName();
         ReferenceType type = process.findClass(context, entry, loader);
         if (!(type instanceof ClassType classType)) {
@@ -65,7 +72,11 @@ public final class HelperLoader {
     }
 
     /** Calls loader.defineClass(name, bytes, 0, bytes.length) in the debugged program. */
-    private static void defineClass(EvaluationContextImpl context, ClassLoaderReference loader, String name, byte[] bytes)
+    private static void defineClass(
+            EvaluationContextImpl context,
+            ClassLoaderReference loader,
+            String name,
+            byte[] bytes)
             throws EvaluateException {
         Method define = DebuggerUtils.findMethod(loader.referenceType(), "defineClass", DEFINE_CLASS_SIGNATURE);
         if (define == null) {

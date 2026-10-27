@@ -13,7 +13,7 @@ public final class PlannedNode {
     public final boolean isRoot;
     public final List<PlannedView> views = new ArrayList<>();
 
-    PlannedNode(Throwable exception, String label, int depth, boolean isRoot) {
+    public PlannedNode(Throwable exception, String label, int depth, boolean isRoot) {
         this.exception = exception;
         this.label = label;
         this.depth = depth;

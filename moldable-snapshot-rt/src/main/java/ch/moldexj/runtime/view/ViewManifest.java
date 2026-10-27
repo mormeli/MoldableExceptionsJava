@@ -46,45 +46,6 @@ public final class ViewManifest {
     private ViewManifest() {
     }
 
-    public static final class ViewEntry {
-        public final String className;
-        public final String methodName;
-        public final boolean isStatic;
-        public final List<ParamEntry> params = new ArrayList<ParamEntry>();
-
-        public ViewEntry(String className, String methodName, boolean isStatic) {
-            this.className = className;
-            this.methodName = methodName;
-            this.isStatic = isStatic;
-        }
-
-        public String key() {
-            return className + "#" + methodName + "/" + params.size();
-        }
-    }
-
-    public static final class ParamEntry {
-        public final int index;
-        public final String type;
-        public final List<AnnotationEntry> annotations = new ArrayList<AnnotationEntry>();
-
-        public ParamEntry(int index, String type) {
-            this.index = index;
-            this.type = type;
-        }
-    }
-
-    public static final class AnnotationEntry {
-        public final String name;
-        /** Boolean, Integer, Long, Double, String; enum constants and class literals as their names (String). */
-        public final Map<String, Object> attributes;
-
-        public AnnotationEntry(String name, Map<String, Object> attributes) {
-            this.name = name;
-            this.attributes = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(attributes));
-        }
-    }
-
     // ---- reading ----
 
     /** Parses a manifest. Unknown or broken lines are skipped, so newer manifests stay readable. */
@@ -261,5 +222,44 @@ public final class ViewManifest {
             out.append(c);
         }
         return out.toString();
+    }
+
+    public static final class ViewEntry {
+        public final String className;
+        public final String methodName;
+        public final boolean isStatic;
+        public final List<ParamEntry> params = new ArrayList<ParamEntry>();
+
+        public ViewEntry(String className, String methodName, boolean isStatic) {
+            this.className = className;
+            this.methodName = methodName;
+            this.isStatic = isStatic;
+        }
+
+        public String key() {
+            return className + "#" + methodName + "/" + params.size();
+        }
+    }
+
+    public static final class ParamEntry {
+        public final int index;
+        public final String type;
+        public final List<AnnotationEntry> annotations = new ArrayList<AnnotationEntry>();
+
+        public ParamEntry(int index, String type) {
+            this.index = index;
+            this.type = type;
+        }
+    }
+
+    public static final class AnnotationEntry {
+        public final String name;
+        /** Boolean, Integer, Long, Double, String; enum constants and class literals as their names (String). */
+        public final Map<String, Object> attributes;
+
+        public AnnotationEntry(String name, Map<String, Object> attributes) {
+            this.name = name;
+            this.attributes = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(attributes));
+        }
     }
 }
