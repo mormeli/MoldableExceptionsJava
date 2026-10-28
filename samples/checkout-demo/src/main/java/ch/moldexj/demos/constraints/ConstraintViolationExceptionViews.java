@@ -1,4 +1,4 @@
-package ch.moldexj.demos.ee;
+package ch.moldexj.demos.constraints;
 
 import ch.moldexj.view.context.DebugFrame;
 import ch.moldexj.view.context.DebugLocal;
@@ -13,24 +13,39 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class ConstraintViolationExceptionViews {
+    private record Tuple<A, B>(A a, B b) {}
+
     @DebugView(value = "Violations", priority = 10)
     static DebugViews.View constraintViolationView(@Exception ConstraintViolationException ex) {
-        return DebugViews.styledTable(
-                ex.getConstraintViolations(),
+        return DebugViews.styledTable(ex.getConstraintViolations(),
                 violation -> null,
                 DebugViews.column("Field", cv -> cv.getPropertyPath().toString()),
-                DebugViews.column("Violated Constraint", cv ->
-                    switch (cv.getConstraintDescriptor().getAnnotation()) {
-                        case Size s -> "%s <= size(%s) <= %s".formatted(s.min(), cv.getPropertyPath().toString(), s.max());
-                        case Min m -> "%s < size(%s)".formatted(m.value(), cv.getPropertyPath().toString());
-                        default -> "N/A";
-                    }
-                ),
-                DebugViews.column("Value", ConstraintViolation::getInvalidValue),
-                DebugViews.column("Hallo", e -> "Basti"));
+                DebugViews.column("Violated Constraint", ConstraintViolationExceptionViews::formatConstraintDescriptor),
+                DebugViews.column("Value", ConstraintViolation::getInvalidValue));
+    }
+
+    static <T> String formatConstraintDescriptor(ConstraintViolation<T> constraintViolation) {
+        return switch (constraintViolation.getConstraintDescriptor().getAnnotation()) {
+            case Size s -> "%s <= %s <= %s".formatted(s.min(), formatMagnitudeByType(constraintViolation), s.max());
+            case Min m -> "%s < %s".formatted(m.value(), formatMagnitudeByType(constraintViolation));
+            default -> "N/A";
+        };
+    }
+
+    static String formatMagnitudeByType(ConstraintViolation<?> constraintViolation) {
+        final String pattern = switch (constraintViolation.getInvalidValue()) {
+            case Number n -> "%s";
+            case String s -> "length(\"%s\")";
+            case Collection<?> l -> "size(%s)";
+            case Map<?,?> m -> "size(%s)";
+            default -> "N/A";
+        };
+        return pattern.formatted(constraintViolation.getPropertyPath().toString());
     }
 
     /**

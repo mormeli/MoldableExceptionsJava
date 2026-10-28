@@ -1,4 +1,4 @@
-package ch.moldexj.demos.ee;
+package ch.moldexj.demos.constraints;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
