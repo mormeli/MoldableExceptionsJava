@@ -25,10 +25,6 @@ import java.util.Map;
  * </pre>
  */
 public final class InjectedValues {
-
-    private InjectedValues() {
-    }
-
     public static List<Object> read(byte[] data, Object[] handles) throws IOException {
         List<Object> values = new ArrayList<>();
         if (data == null || data.length == 0) {

@@ -24,7 +24,7 @@ final class DataProxy implements InvocationHandler {
 
     private final Map<String, Object> data;
 
-    DataProxy(Map<String, Object> data) {
+    public DataProxy(Map<String, Object> data) {
         this.data = data;
     }
 

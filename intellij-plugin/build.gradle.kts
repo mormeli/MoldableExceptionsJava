@@ -5,7 +5,8 @@ plugins {
 
 dependencies {
     // Bundled into the plugin: its classes are defined in the debugged JVM, and ViewManifest reads library manifests.
-    implementation(project(":moldable-snapshot-rt"))
+    implementation(project(":moldable-views-rt"))
+    implementation("de.redsix:pdfcompare:1.2.11")
 
     intellijPlatform {
         intellijIdea("2025.3")

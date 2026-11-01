@@ -1,8 +1,7 @@
 # Moldable Exceptions for IntelliJ IDEA (prototype)
 
-An IntelliJ IDEA plugin that lets **a Java exception decide how it is debugged**: the Java port of the
-Visual Studio Moldable Exception Visualizer, after *moldable exceptions* (Chiş, Nierstrasz, Gîrba,
-Onward! 2024; Glamorous Toolkit by feenk).
+An IntelliJ IDEA plugin that lets **a Java exception decide how it is debugged**, after *moldable exceptions*
+(Chiş, Nierstrasz, Gîrba, Onward! 2024; Glamorous Toolkit by feenk).
 
 ```java
 public final class ApiContractMismatchException extends RuntimeException {
@@ -120,7 +119,7 @@ a project with its own `DebugView` annotation passes `-Amoldexj.debugView=com.ac
 | --- | --- | --- |
 | `moldable-views` | your app (Java 8+) | `@DebugView` and `DebugViews.text / diff / table`. Optional: the plugin finds views by annotation **name**, so you can declare your own `@DebugView`. |
 | `moldable-views-processor` | your build (javac 8+) | Annotation processor that writes the view manifest. |
-| `moldable-snapshot-rt` | the **debugged JVM** | `ExceptionMolder`: `plan` finds the views of the chain and the debugger data they need, `mold` calls the `@DebugView` methods with their parameters and returns one JSON string. Counterpart of the VS object source. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. See [its README](moldable-snapshot-rt/README.md). |
+| `moldable-snapshot-rt` | the **debugged JVM** | `ExceptionMolder`: `plan` finds the views of the chain and the debugger data they need, `mold` calls the `@DebugView` methods with their parameters and returns one JSON string. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. See [its README](moldable-snapshot-rt/README.md). |
 | `intellij-plugin` | IntelliJ IDEA | Loads the helper into the paused JVM, shows the dialog, opens it automatically at exception stops. |
 | `samples/checkout-demo` | – | Throws an `ApiContractMismatchException`, wraps it in an `IllegalStateException` that nothing catches. |
 
@@ -140,21 +139,11 @@ your breakpoint settings are not touched. Switch it off with **Run → Moldable:
 You can also open the views by hand: right-click any exception in the Variables view → **Show Moldable Views**.
 **Run → Moldable: Open Views at Exception Breakpoints** controls whether the dialog opens automatically at a stop.
 
-## Why this is simpler than in Visual Studio
-
-In Visual Studio, the "Exception Unhandled" stop comes after .NET has declared the exception unhandled, and
-Visual Studio refuses to create custom visualizers there. You either had to break at every throw or run twice.
+## Why the stop is at the throw site
 
 The JVM decides "uncaught" **at the throw**: before unwinding, JVMTI looks for a handler and reports the catch
 location (none means uncaught). An exception breakpoint set to "Uncaught" therefore stops at the throw site, with
 the program alive, and the helper can run there. One run is enough, and caught exceptions don't stop the program.
-
-| Visual Studio version | IntelliJ version |
-| --- | --- |
-| object source DLL, loaded by the debugger | `ExceptionMolder`, defined by the plugin in a fresh class loader inside the debugged JVM |
-| `DebuggerVisualizerProvider` + Remote UI | `MoldableViewsDialog` (Swing, IntelliJ diff viewer) |
-| magnifier on `$exception` | **Show Moldable Views** in the Variables context menu |
-| `BreakAtThrowPackage` (two runs) | own "uncaught" request: stops only at moldable exceptions, no breakpoint needed (one run) |
 
 ## Design notes
 

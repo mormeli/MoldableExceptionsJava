@@ -42,5 +42,22 @@
                     description="Open the moldable views automatically when the debugger stops on a moldable exception"/>
             <add-to-group group-id="RunMenu" anchor="last"/>
         </group>
+
+        <!-- Toolbar of the PDF diff view (PdfDiffPanel). -->
+        <group id="Moldable.PdfDiff.Toolbar">
+            <action id="Moldable.PdfDiff.PreviousPage" class="ch.moldexj.view.pdf.actions.PreviousPageAction"
+                    text="Previous Changed Page" icon="AllIcons.Actions.PreviousOccurence"/>
+            <action id="Moldable.PdfDiff.NextPage" class="ch.moldexj.view.pdf.actions.NextPageAction"
+                    text="Next Changed Page" icon="AllIcons.Actions.NextOccurence"/>
+            <separator/>
+            <action id="Moldable.PdfDiff.ZoomOut" class="ch.moldexj.view.pdf.actions.ZoomOutAction"
+                    text="Zoom Out" icon="AllIcons.General.ZoomOut"/>
+            <action id="Moldable.PdfDiff.ZoomIn" class="ch.moldexj.view.pdf.actions.ZoomInAction"
+                    text="Zoom In" icon="AllIcons.General.ZoomIn"/>
+            <action id="Moldable.PdfDiff.FitWidth" class="ch.moldexj.view.pdf.actions.FitWidthAction"
+                    text="Fit Width" icon="AllIcons.General.FitContent"/>
+            <action id="Moldable.PdfDiff.ActualSize" class="ch.moldexj.view.pdf.actions.ActualSizeAction"
+                    text="Actual Size" icon="AllIcons.General.ActualZoom"/>
+        </group>
     </actions>
 </idea-plugin>

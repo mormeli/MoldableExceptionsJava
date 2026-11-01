@@ -10,9 +10,9 @@ rootProject.name = "moldable-exceptions-intellij"
 include(
     "moldable-views",          // @DebugView + DebugViews: what application code uses (optional dependency)
     "moldable-views-processor", // annotation processor: writes META-INF/moldexj/views, the manifest of all views
-    "moldable-snapshot-rt",    // helper class loaded into the debugged JVM by the plugin
+    "moldable-views-rt",    // helper class loaded into the debugged JVM by the plugin
     "intellij-plugin",         // the IntelliJ plugin
-    "samples:checkout-demo",   // demo application
+    "samples:demos",   // demo application
 )
 
 dependencyResolutionManagement {

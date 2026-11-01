@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     // ViewManifest, the format shared with the plugin and the helper in the debugged JVM.
-    implementation(project(":moldable-snapshot-rt"))
+    implementation(project(":moldable-views-rt"))
 }
 
 // Runs inside the javac of the application, which may be any JDK from 8 on.
