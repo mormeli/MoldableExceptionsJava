@@ -94,7 +94,7 @@ project on the stack.
 
 ### `pdf`: a built-in view
 
-`ComparisonFailedDemo` throws a `PdfComparisonFailedException` with the paths of two PDFs that should be equal,
+`PdfComparisonFailedDemo` throws a `PdfComparisonFailedException` with the paths of two PDFs that should be equal,
 `data/lorem.pdf` and `data/lorem-edited.pdf` in the repository root. The paths are resolved against the working
 directory, so run the demo with the repository root as working directory (IntelliJ's default).
 
