@@ -1,15 +1,8 @@
 package ch.moldexj.demos.mockito;
 
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
-import org.mockito.exceptions.misusing.InvalidUseOfMatchersException;
-
 import java.net.Socket;
-import java.util.List;
-import java.util.regex.Matcher;
 
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 

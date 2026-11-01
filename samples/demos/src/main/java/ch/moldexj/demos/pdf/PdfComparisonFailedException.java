@@ -2,7 +2,6 @@ package ch.moldexj.demos.pdf;
 
 import ch.moldexj.view.DebugView;
 import ch.moldexj.view.DebugViews;
-import ch.moldexj.view.annotation.Exception;
 
 import java.nio.file.Path;
 
@@ -27,9 +26,9 @@ public class PdfComparisonFailedException extends RuntimeException {
     }
 
     @DebugView(value = "Diff", priority = 10)
-    public DebugViews.View pdfDiffView(@Exception PdfComparisonFailedException ex)
+    public DebugViews.View pdfDiffView()
     {
-        return DebugViews.pdfDiff(getActual().toString(), getExpected().toString());
+        return DebugViews.pdfDiff(getExpected().toString(), getActual().toString());
     }
 
 

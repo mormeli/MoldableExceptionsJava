@@ -11,6 +11,7 @@ for the throw exception.
 | `regex` | `PatternSyntaxExceptionDemo` | `PatternSyntaxException` (JDK) | Pattern, Parser, Fix | `@StackFrames(fields = true)`: the regex parser's own frames and private fields |
 | `constraints` | `ConstraintViolationExceptionDemo` | `ConstraintViolationException` (Jakarta Validation) | Violations, Throw site | `@StackFrames`: the validated object, live from the locals of the throw |
 | `mockito` | `MockitoDemo` | `InvalidUseOfMatchersException` (Mockito) | Matchers, Calls | Live library objects from a frame inside Mockito |
+| `pdf` | `ComparisonFailedDemo` | `PdfComparisonFailedException` (custom) | Diff | A built-in view of the plugin: the visual diff of two PDF files |
 
 ## Running a demo
 To work with the demos, follow these steps:
@@ -90,6 +91,18 @@ Mockito replaces each matcher with a placeholder (`0`, `null`, `""`, …) in the
 possible position of the matchers and keeps the one that fits the real calls best. **Matchers** also takes a
 `@PsiQuery` parameter, an experimental data provider of the plugin that currently returns the first source line of the
 project on the stack.
+
+### `pdf`: a built-in view
+
+`ComparisonFailedDemo` throws a `PdfComparisonFailedException` with the paths of two PDFs that should be equal,
+`data/lorem.pdf` and `data/lorem-edited.pdf` in the repository root. The paths are resolved against the working
+directory, so run the demo with the repository root as working directory (IntelliJ's default).
+
+The exception has one `@DebugView` that returns `DebugViews.pdfDiff(...)`. The program only passes the two paths; the
+plugin compares the files itself (with pdfcompare) and shows the result:
+
+- **Diff**: the pages that differ, one at a time, with the differences highlighted. The toolbar pages through them,
+  zooms (also Ctrl + mouse wheel), and switches between the diff, the expected and the actual page.
 
 ## Build
 

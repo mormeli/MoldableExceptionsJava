@@ -1,21 +1,14 @@
 package ch.moldexj.demos.constraints;
 
-import ch.moldexj.demos.domain.ApiContractMismatchException;
-import ch.moldexj.view.context.DebugFrame;
-import ch.moldexj.view.context.DebugLocal;
-import ch.moldexj.view.context.DebugStack;
 import ch.moldexj.view.DebugView;
 import ch.moldexj.view.DebugViews;
 import ch.moldexj.view.annotation.Exception;
-import ch.moldexj.view.annotation.StackFrames;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 public class ConstraintViolationExceptionViews {
@@ -28,12 +21,6 @@ public class ConstraintViolationExceptionViews {
                 DebugViews.column("Field", cv -> cv.getPropertyPath().toString()),
                 DebugViews.column("Violated Constraint", ConstraintViolationExceptionViews::formatConstraintDescriptor),
                 DebugViews.column("Value", ConstraintViolation::getInvalidValue));
-    }
-
-    @DebugView(value = "Diff", priority = 10)
-    static DebugViews.View pdfDiffView(@Exception ClassCastException ex)
-    {
-        return DebugViews.pdfDiff("C:\\Users\\tk\\OneDrive\\Dokumente\\03 Studium\\02-Master\\Diskrete Mathematik - Skript-5.pdf", "C:\\Users\\tk\\OneDrive\\Dokumente\\03 Studium\\02-Master\\Diskrete Mathematik - Skript-5 - Copy.pdf");
     }
 
     static <T> String formatConstraintDescriptor(ConstraintViolation<T> constraintViolation) {
