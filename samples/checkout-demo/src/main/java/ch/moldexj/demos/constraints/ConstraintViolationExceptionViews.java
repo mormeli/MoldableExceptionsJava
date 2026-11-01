@@ -1,5 +1,6 @@
 package ch.moldexj.demos.constraints;
 
+import ch.moldexj.demos.domain.ApiContractMismatchException;
 import ch.moldexj.view.context.DebugFrame;
 import ch.moldexj.view.context.DebugLocal;
 import ch.moldexj.view.context.DebugStack;
@@ -29,6 +30,12 @@ public class ConstraintViolationExceptionViews {
                 DebugViews.column("Value", ConstraintViolation::getInvalidValue));
     }
 
+    @DebugView(value = "Diff", priority = 10)
+    static DebugViews.View pdfDiffView(@Exception ClassCastException ex)
+    {
+        return DebugViews.pdfDiff("C:\\Users\\tk\\OneDrive\\Dokumente\\03 Studium\\02-Master\\Diskrete Mathematik - Skript-5.pdf", "C:\\Users\\tk\\OneDrive\\Dokumente\\03 Studium\\02-Master\\Diskrete Mathematik - Skript-5 - Copy.pdf");
+    }
+
     static <T> String formatConstraintDescriptor(ConstraintViolation<T> constraintViolation) {
         return switch (constraintViolation.getConstraintDescriptor().getAnnotation()) {
             case Size s -> "%s <= %s <= %s".formatted(s.min(), formatMagnitudeByType(constraintViolation), s.max());
@@ -46,29 +53,5 @@ public class ConstraintViolationExceptionViews {
             default -> "N/A";
         };
         return pattern.formatted(constraintViolation.getPropertyPath().toString());
-    }
-
-    /**
-     * The validated object, taken live from the stack of the throw: the exception only knows the violations, the
-     * debugger also knows which object was validated and what else was in scope.
-     */
-    @DebugView(value = "Throw site", priority = 20)
-    static DebugViews.View throwSite(
-            @Exception ConstraintViolationException ex,
-            @StackFrames(depth = 3) DebugStack stack) {
-        List<String[]> rows = new ArrayList<>();
-        for (DebugFrame frame : stack.frames()) {
-            for (DebugLocal local : frame.locals()) {
-                // value() is the live object from the paused program, so it can be checked and used like any other.
-                String validated = local.value() instanceof User ? "validated" : "";
-                rows.add(new String[]{frame.methodName() + ":" + frame.line(), local.name(), local.typeName(), local.text(), validated});
-            }
-        }
-        return DebugViews.styledTable(rows,
-                row -> row[4].isEmpty() ? null : "warning",
-                DebugViews.column("Frame", row -> row[0]),
-                DebugViews.column("Variable", row -> row[1]),
-                DebugViews.column("Type", row -> row[2]),
-                DebugViews.column("Value", row -> row[3]));
     }
 }

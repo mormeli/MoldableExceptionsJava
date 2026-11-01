@@ -33,7 +33,9 @@ final class ResultConverter {
             case "text":
                 return ViewJson.text(title, priority, "text", Reflection.readString(result, "text")).toString();
             case "diff":
-                return ViewJson.custom(title, priority, "diff")
+            case "pdfdiff":
+                // For a PDF diff, expected and actual are file paths that the plugin compares.
+                return ViewJson.custom(title, priority, kind.toLowerCase())
                         .diff(Reflection.readString(result, "expected"), Reflection.readString(result, "actual"),
                                 Reflection.readString(result, "expectedLabel"), Reflection.readString(result, "actualLabel"))
                         .toString();

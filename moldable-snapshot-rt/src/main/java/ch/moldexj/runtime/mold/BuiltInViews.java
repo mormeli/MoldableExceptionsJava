@@ -13,10 +13,7 @@ import java.util.List;
 final class BuiltInViews {
     private static final int FRAME_LIMIT = 200;
 
-    private BuiltInViews() {
-    }
-
-    static List<String> render(Throwable t) {
+    public static List<String> render(Throwable t) {
         List<String> views = new ArrayList<>();
         views.add(new ViewJson("Details", "text", false, 1000).text(details(t)).toString());
         views.add(new ViewJson("Stack trace", "text", false, 1001).text(stackTrace(t)).toString());

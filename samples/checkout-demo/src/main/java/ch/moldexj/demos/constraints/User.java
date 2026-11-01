@@ -11,14 +11,11 @@ public class User {
     private String name;
 
     @Min(value = 18, message = "Du musst mindestens 18 Jahre alt sein!")
-    private int alter;
-
-
-    public String lastName;
+    private int age;
 
     // Konstruktor, Getter und Setter...
     public User(String name, int alter) {
         this.name = name;
-        this.alter = alter;
+        this.age = alter;
     }
 }

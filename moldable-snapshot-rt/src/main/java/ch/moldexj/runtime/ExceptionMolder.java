@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Runs INSIDE THE DEBUGGED JVM. The IntelliJ plugin defines the classes of this module in the paused program from their
- * bytes (see {@code HelperLoader}) and calls two methods. It is the Java counterpart of the Visual Studio object source.
+ * bytes (see {@code HelperLoader}) and calls two methods.
  *
  * <ol>
  *   <li>{@link #plan(Throwable)} finds the views of the exception chain and says which debugger data they need.</li>

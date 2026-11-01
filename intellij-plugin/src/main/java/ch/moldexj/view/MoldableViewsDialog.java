@@ -1,6 +1,7 @@
 package ch.moldexj.view;
 
 import ch.moldexj.ExceptionSnapshot;
+import ch.moldexj.view.pdf.PdfDiffPanel;
 import com.intellij.diff.DiffContentFactory;
 import com.intellij.diff.DiffManager;
 import com.intellij.diff.DiffRequestPanel;
@@ -45,6 +46,7 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -176,6 +178,8 @@ public final class MoldableViewsDialog extends DialogWrapper {
 
     private JComponent createViewComponent(ExceptionSnapshot.View view) {
         switch (view.kind) {
+            case "pdfdiff":
+                return createPdfDiff(view);
             case "diff":
                 return createDiff(view);
             case "table":
@@ -194,6 +198,15 @@ public final class MoldableViewsDialog extends DialogWrapper {
             default:
                 return createText(view.text);
         }
+    }
+
+    private JComponent createPdfDiff(ExceptionSnapshot.View view) {
+        if (view.expected == null || view.expected.isBlank() || view.actual == null || view.actual.isBlank()) {
+            return createText("The PDF diff needs the paths of both the expected and the actual file.");
+        }
+        PdfDiffPanel pdfDiffPanel = new PdfDiffPanel();
+        pdfDiffPanel.compare(Path.of(view.expected), Path.of(view.actual));
+        return pdfDiffPanel;
     }
 
     private JComponent createText(@Nullable String text) {

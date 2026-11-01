@@ -4,10 +4,6 @@ import java.util.List;
 
 /** Just enough JSON writing for the snapshot; the plugin parses it with Gson. */
 public final class Json {
-
-    private Json() {
-    }
-
     public static String string(String value) {
         StringBuilder out = new StringBuilder();
         string(out, value);

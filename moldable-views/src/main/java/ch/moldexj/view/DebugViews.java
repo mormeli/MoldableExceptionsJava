@@ -38,6 +38,10 @@ public final class DebugViews {
         return new DiffView(expected, actual, "Expected", "Actual");
     }
 
+    public static View pdfDiff(String expected, String actual) {
+        return new DiffView("pdfDiff", expected, actual, "Expected", "Actual");
+    }
+
     /** A side-by-side diff with custom labels for both sides. */
     public static View diff(String expected, String actual, String expectedLabel, String actualLabel) {
         return new DiffView(expected, actual, expectedLabel, actualLabel);
@@ -127,21 +131,27 @@ public final class DebugViews {
     }
 
     public static final class DiffView implements View {
+        private final String kind;
         private final String expected;
         private final String actual;
         private final String expectedLabel;
         private final String actualLabel;
 
-        DiffView(String expected, String actual, String expectedLabel, String actualLabel) {
+        DiffView(String kind, String expected, String actual, String expectedLabel, String actualLabel) {
+            this.kind = kind;
             this.expected = expected;
             this.actual = actual;
             this.expectedLabel = expectedLabel;
             this.actualLabel = actualLabel;
         }
 
+        DiffView(String expected, String actual, String expectedLabel, String actualLabel) {
+            this("diff", expected, actual, expectedLabel, actualLabel);
+        }
+
         @Override
         public String kind() {
-            return "diff";
+            return kind;
         }
 
         public String expected() {
