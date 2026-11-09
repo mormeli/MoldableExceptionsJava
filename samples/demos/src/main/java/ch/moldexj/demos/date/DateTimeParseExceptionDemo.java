@@ -1,6 +1,7 @@
 package ch.moldexj.demos.date;
 
 import java.time.LocalDate;
+import java.util.Scanner;
 
 /**
  * A DateTimeParseException that nothing catches. Just debug it (no breakpoint needed): the debugger stops inside
@@ -9,11 +10,15 @@ import java.time.LocalDate;
 public final class DateTimeParseExceptionDemo {
 
     public static void main(String[] args) {
-        String dueDate = "2026-10-8"; // from a CSV export: the day is not zero-padded
-        LocalDate due = LocalDate.parse(dueDate);
-        System.out.println("Invoice due on " + due);
+        // 1. Read a date
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("What date would you like the weekday of?");
+        System.out.print("> ");
+        String day = scanner.nextLine();
+
+        // 2. Parse the date
+        LocalDate localDate = LocalDate.parse(day);
+        System.out.printf("The %s is a %s%n", localDate, localDate.getDayOfWeek());
     }
 
-    private DateTimeParseExceptionDemo() {
-    }
 }
