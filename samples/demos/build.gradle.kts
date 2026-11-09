@@ -7,6 +7,8 @@ repositories {
 }
 
 dependencies {
+    // moldable-views alone, without the runtime: the plugin injects the runtime when a demo is debugged.
+    // samples/console-demo has the runtime as a dependency instead.
     implementation(project(":moldable-views"))
     annotationProcessor(project(":moldable-views-processor"))
     implementation("org.hibernate.validator:hibernate-validator:9.1.5.Final")

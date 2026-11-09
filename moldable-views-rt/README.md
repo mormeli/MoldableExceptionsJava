@@ -1,7 +1,10 @@
 # moldable-snapshot-rt
 
-The code that runs **inside the program being debugged**. When the debugger is paused at an exception, the IntelliJ
-plugin injects this module into the paused JVM and calls two methods: `plan` finds the views of the exception chain
+The code that runs **inside the program whose exceptions are molded**. It gets there in one of two ways: the program
+depends on this module (which brings `moldable-views` along), or the IntelliJ plugin injects it into the paused JVM.
+When the debugger is paused at an exception, the plugin uses the program's copy if there is one, injects its own
+otherwise ([HelperLoader](../intellij-plugin/src/main/java/ch/moldexj/debuggee/HelperLoader.java)), and calls two
+methods: `plan` finds the views of the exception chain
 and says which debugger data they need, `mold` runs them with that data and returns one JSON string describing the
 exception chain and every view of every exception in it. The plugin only draws what that JSON says.
 
@@ -52,11 +55,40 @@ arbitrary JVM** that knows nothing about the plugin.
 | --- | --- |
 | The debuggee may run Java 8 | `options.release = 8` in [build.gradle.kts](build.gradle.kts); no `var`, records, `List.of`, ... |
 | The debuggee has no libraries of ours | Only the JDK. JSON is written by hand ([Json](src/main/java/ch/moldexj/runtime/mold/Json.java)); no Gson, and no JSON parser either, so data from the plugin comes in binary. |
-| The app may not depend on `moldable-views` at all, or may have its own copy | Views are found by annotation **simple name** (`DebugView`, `Exception`), and results are read by **duck typing** (`kind()`, `text()`, `rows()`, ...), never by `instanceof` on our types. |
+| The app may not depend on `moldable-views` at all, or may have its own copy | Views are found by annotation **simple name** (`DebugView`, `Exception`), and results are read by **duck typing** (`kind()`, `text()`, `rows()`, ...), never by `instanceof` on our types. See [Why duck typing](#why-duck-typing). |
 | Parameter annotations (`@Exception`, `@StackFrames`) are `CLASS`-retained | Reflection cannot see them. Views with parameters are only known from the view manifest, written by `moldable-views-processor`. |
 | The plugin must pass data through JDI, where every call is slow | Two calls: `plan(exception)` returns one object with two fields, `mold(plan, byte[], Object[])` returns one string. Hence the binary value format. |
 | Code in the debuggee is untrusted and may be broken | Every call into it is wrapped ([Safe](src/main/java/ch/moldexj/runtime/util/Safe.java), `try/catch Throwable` everywhere), and output is capped (the `*_LIMIT` constants in `ChainWalker`, `Safe`, `ResultConverter` and `BuiltInViews`). `plan` and `mold` never throw. |
 | The plugin needs to know which classes to define, and in which order | The build writes `META-INF/moldexj/runtime-classes` listing every class; the plugin ([RuntimeClasses](../intellij-plugin/src/main/java/ch/moldexj/debuggee/RuntimeClasses.java)) defines supertypes first. |
+
+### Why duck typing
+
+This module depends on `moldable-views` in the build (`api(project(":moldable-views"))`), yet no class in it uses a
+`moldable-views` type. That looks odd, and it is on purpose.
+
+**The dependency is packaging.** A program that depends on `moldable-views-rt` gets the annotations and `DebugViews`
+with one line in its build. A program that only wants to write views depends on `moldable-views` alone, and the plugin
+injects the runtime when it is debugged.
+
+**The code must not use the types**, because of how the JVM identifies a class: by its name *and* its class loader.
+The same class file loaded by two class loaders is two unrelated classes. That happens here:
+
+- An injected runtime lives in its own class loader, a child of the stopped frame's loader.
+- When the debugger stops inside the JDK (where `java.time` throws `DateTimeParseException`, for example), the frame's
+  loader is the bootstrap loader. The injected loader then cannot see the program's `moldable-views` at all.
+- A program without any dependency of ours gets `moldable-views` injected too, next to whatever the program has.
+
+If the runtime asked `method.getAnnotation(DebugView.class)` with *its* `DebugView`, a view annotated with the
+*program's* `DebugView` would not match, and the view would silently disappear. A cast of a view's result to the
+runtime's `DebugViews.View` would fail the same way.
+
+Comparing the annotation's simple name and reading results by reflection has no such problem: it works with any copy,
+in any loader. So:
+
+- find annotations with `Reflection.debugView`, never with a class literal from `moldable-views`;
+- read results with `Reflection.read` / `readString` ([ResultConverter](src/main/java/ch/moldexj/runtime/mold/ResultConverter.java)), never with `instanceof` or a cast;
+- hand parameters to views through a `java.lang.reflect.Proxy` of the view's own parameter type
+  ([ValueAdapter](src/main/java/ch/moldexj/runtime/value/ValueAdapter.java)).
 
 ## One snapshot, step by step
 

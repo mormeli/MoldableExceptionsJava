@@ -2,8 +2,17 @@ plugins {
     id("java-library")
 }
 
-// The plugin defines these classes inside the DEBUGGED JVM from their bytes. IntelliJ refuses to load a helper
-// compiled for a newer Java than the debuggee runs, so target Java 8. Only JDK dependencies: nothing else is there.
+dependencies {
+    // Packaging only: a program that depends on the runtime gets the annotations and DebugViews along with it.
+    // The code of this module must NOT use these classes. It finds views by annotation name and reads results by
+    // reflection, because the program and an injected runtime can each have their own copy of moldable-views, and the
+    // same class from two class loaders is two different classes to the JVM. See README.md, "Why duck typing".
+    api(project(":moldable-views"))
+}
+
+// The runtime reaches a program in two ways: as a dependency, or, if the program has none, the plugin defines these
+// classes inside the DEBUGGED JVM from their bytes. IntelliJ refuses to load a helper compiled for a newer Java than
+// the debuggee runs, so target Java 8. Only JDK dependencies: nothing else is there when it is injected.
 tasks.withType<JavaCompile>().configureEach {
     options.release = 8
     options.encoding = "UTF-8"

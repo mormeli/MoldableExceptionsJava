@@ -17,9 +17,10 @@ public final class Reflection {
     }
 
     /**
-     * The helper's own loader is a child of the stopped frame's loader. When the debugger stops inside the JDK (for
-     * example where java.time throws DateTimeParseException), that is the bootstrap loader, which cannot see
-     * application classes, so the thread's context class loader (normally the application's) is tried as well.
+     * As a library, the runtime's own loader is the application's. Injected by the plugin, it is a child of the stopped
+     * frame's loader. When the debugger stops inside the JDK (for example where java.time throws
+     * DateTimeParseException), that is the bootstrap loader, which cannot see application classes, so the thread's
+     * context class loader (normally the application's) is tried as well.
      */
     public static List<ClassLoader> classLoaders() {
         ClassLoader context;

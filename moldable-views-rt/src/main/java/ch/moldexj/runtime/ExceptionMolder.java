@@ -19,8 +19,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Runs INSIDE THE DEBUGGED JVM. The IntelliJ plugin defines the classes of this module in the paused program from their
- * bytes (see {@code HelperLoader}) and calls two methods.
+ * Runs INSIDE THE PROGRAM whose exceptions are molded. It gets there as a dependency, or, if the program has none, the
+ * IntelliJ plugin defines the classes of this module in the paused program from their bytes (see {@code HelperLoader}).
+ * Either way the plugin calls two methods.
  *
  * <ol>
  *   <li>{@link #plan(Throwable)} finds the views of the exception chain and says which debugger data they need.</li>
@@ -28,8 +29,13 @@ import java.util.List;
  *       the planned views and returns the snapshot as JSON.</li>
  * </ol>
  *
- * <p>Constraints, because the classes are defined into an arbitrary JVM: Java 8 bytecode, and no dependencies beyond the
+ * <p>Constraints, because the classes may be defined into an arbitrary JVM: Java 8 bytecode, and no dependencies beyond the
  * JDK. Views are found by annotation <em>name</em> and read by duck typing, so the program needs no library either.
+ *
+ * <p>This module depends on moldable-views, but only so that a program gets both with one dependency. No class here
+ * may use a moldable-views type: an injected runtime and the program can each have their own copy of those classes,
+ * and two copies of {@code DebugView} are different classes to the JVM. Asking a method for the runtime's
+ * {@code DebugView} would then find nothing on the program's views. Comparing names works with any copy.
  *
  * <p>Where views come from:
  * <ul>
