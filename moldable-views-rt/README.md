@@ -16,6 +16,7 @@ only the debuggee knows which views exist (from the view manifests on its classp
 
 - [The big picture](#the-big-picture)
 - [Why it looks complicated](#why-it-looks-complicated)
+- [Without a debugger](#without-a-debugger)
 - [One snapshot, step by step](#one-snapshot-step-by-step)
 - [The protocol](#the-protocol)
 - [Where views come from](#where-views-come-from)
@@ -89,6 +90,31 @@ in any loader. So:
 - read results with `Reflection.read` / `readString` ([ResultConverter](src/main/java/ch/moldexj/runtime/mold/ResultConverter.java)), never with `instanceof` or a cast;
 - hand parameters to views through a `java.lang.reflect.Proxy` of the view's own parameter type
   ([ValueAdapter](src/main/java/ch/moldexj/runtime/value/ValueAdapter.java)).
+
+## Without a debugger
+
+A program that depends on this module can mold its own exceptions and print the result
+([ExceptionPrinter](src/main/java/ch/moldexj/runtime/ExceptionPrinter.java)):
+
+```java
+ExceptionPrinter.install();     // once, e.g. in main: uncaught exceptions that have views are printed
+
+try { ... } catch (OrderRejectedException e) {
+    ExceptionPrinter.print(e);  // a caught exception
+}
+```
+
+Each exception becomes one line on `System.err` (or the `PrintStream` passed to `print`): `[moldex] ` followed by the
+JSON of [The output JSON](#the-output-json), exactly what the plugin gets.
+
+`ExceptionPrinter` calls the same two methods as the plugin, `plan` and then `mold(plan, null, null)`. A `null` for
+the data means "no debugger": a view that asks for debugger data (`@StackFrames`, `@PsiQuery`) becomes a view of kind
+`unavailable` that says so. **Without a debugger a view only sees the exception itself**: its fields, message, causes
+and `getStackTrace()`. Local variables and frames exist only at the throw, and only a debugger can read them there.
+
+`install()` sets the JVM-wide default uncaught-exception handler. It prints only exceptions with views of their own,
+then calls the handler that was there before, or prints the stack trace as the JVM would. Try it with
+`gradlew :samples:console-demo:run`.
 
 ## One snapshot, step by step
 

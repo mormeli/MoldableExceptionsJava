@@ -21,7 +21,8 @@ import java.util.List;
 /**
  * Runs INSIDE THE PROGRAM whose exceptions are molded. It gets there as a dependency, or, if the program has none, the
  * IntelliJ plugin defines the classes of this module in the paused program from their bytes (see {@code HelperLoader}).
- * Either way the plugin calls two methods.
+ * Either way the plugin calls two methods. Without a debugger, the program calls the same two itself
+ * ({@link ExceptionPrinter}).
  *
  * <ol>
  *   <li>{@link #plan(Throwable)} finds the views of the exception chain and says which debugger data they need.</li>
@@ -48,6 +49,8 @@ public final class ExceptionMolder {
 
     private static final String ONLY_AT_ROOT = "This view needs data from the debugger, which is only available for the"
             + " exception the debugger stopped at, not for its causes or suppressed exceptions.";
+    private static final String NO_DEBUGGER = "This view needs data from the debugger (for example @StackFrames)."
+            + " Without a debugger, a view only sees the exception itself.";
     private static final String NOT_DECLARED = "This view has parameters, but no view manifest declares them. Compile"
             + " the project with moldable-views-processor.";
 
@@ -85,8 +88,9 @@ public final class ExceptionMolder {
     /**
      * Runs the planned views. Never throws: problems end up in the snapshot as notes or error views.
      *
-     * @param data    the values for the plan's requests, written by {@code DebuggeeMarshaller} ({@link InjectedValues}),
-     *                or null if there are none
+     * @param data    the values for the plan's requests, written by {@code DebuggeeMarshaller} ({@link InjectedValues}).
+     *                Null means there is no debugger: every view that asked for debugger data says so instead of
+     *                running. The plugin passes null only for a plan without requests, which is the same thing.
      * @param handles the live objects referenced from {@code data}, or null
      */
     public static String mold(MoldPlan plan, byte[] data, Object[] handles) {
@@ -95,10 +99,16 @@ public final class ExceptionMolder {
         try {
             diagnostics.addAll(plan.notes);
 
-            List<Object> values = InjectedValues.read(data, handles);
-            if (values.size() != plan.requestCount) {
-                diagnostics.add("The debugger sent " + values.size() + " values for " + plan.requestCount + " requests.");
-                values = Collections.nCopies(plan.requestCount, new Unavailable("The debugger did not send this value."));
+            List<Object> values;
+            if (data == null) {
+                // No debugger: the program molds its own exception (ExceptionPrinter). Not a problem worth a note.
+                values = Collections.nCopies(plan.requestCount, new Unavailable(NO_DEBUGGER));
+            } else {
+                values = InjectedValues.read(data, handles);
+                if (values.size() != plan.requestCount) {
+                    diagnostics.add("The debugger sent " + values.size() + " values for " + plan.requestCount + " requests.");
+                    values = Collections.nCopies(plan.requestCount, new Unavailable("The debugger did not send this value."));
+                }
             }
             ViewRunner runner = new ViewRunner(values);
             for (PlannedNode node : plan.nodes) {

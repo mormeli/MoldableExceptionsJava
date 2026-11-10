@@ -8,6 +8,16 @@ dependencies {
     // reflection, because the program and an injected runtime can each have their own copy of moldable-views, and the
     // same class from two class loaders is two different classes to the JVM. See README.md, "Why duck typing".
     api(project(":moldable-views"))
+
+    // The tests declare views with parameters, which the runtime only knows from the manifest the processor writes.
+    testAnnotationProcessor(project(":moldable-views-processor"))
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 // The runtime reaches a program in two ways: as a dependency, or, if the program has none, the plugin defines these

@@ -1,209 +1,211 @@
-# Entwurf: Runtime in der Library, Views in der Konsole
+# Design: runtime in the library, views in the console
 
-Status: Entwurf vom 2026-11-09 auf dem Branch `views-ohne-debugger`. Schritt 1 ist umgesetzt und am 2026-11-10 in
-`runIde` von Hand getestet (Abschnitt 6, Punkt 4). Schritt 2 ist noch nicht umgesetzt. Löst
-[design-views-ohne-debugger.md](design-views-ohne-debugger.md) ab. Baut auf [design-plan-mold.md](design-plan-mold.md)
-auf (`ExceptionMolder.plan` / `mold`).
+Status: design of 2026-11-09 on the branch `views-ohne-debugger`. Step 1 is implemented and was tested by hand in
+`runIde` on 2026-11-10 (section 6, item 4). Step 2 was implemented on 2026-11-10, with tests in `moldable-views-rt`,
+and `samples/console-demo` was run by hand with and without the debugger. Replaces
+[design-views-ohne-debugger.md](design-views-ohne-debugger.md). Builds on [design-plan-mold.md](design-plan-mold.md)
+(`ExceptionMolder.plan` / `mold`).
 
-## 0. Worum es geht
+The German original of this document is [design-runtime-in-library-de.md](design-runtime-in-library-de.md).
 
-Heute entstehen Moldable Views nur, wenn IntelliJ mit dem Debugger am Programm hängt: Das Plugin injiziert die Runtime
-(`moldable-views-rt`) in das angehaltene Programm und ruft sie über JDI auf.
+## 0. What this is about
 
-Dieser Entwurf macht zwei Schritte:
+Today, moldable views only exist while IntelliJ is attached to the program with the debugger: the plugin injects the
+runtime (`moldable-views-rt`) into the suspended program and calls it through JDI.
 
-1. **Die Runtime wird eine Library.** Ein Programm kann `moldable-views-rt` als Dependency nehmen und hat die Runtime
-   damit selbst auf dem Classpath. Das Plugin benutzt diese Runtime, wenn sie da ist, und injiziert sonst wie heute.
-2. **Das Programm gibt die Views selbst aus.** Ohne Debugger ruft das Programm `plan` und `mold` selbst auf und
-   schreibt das Ergebnis als rohes JSON in die Konsole.
+This design takes two steps:
 
-Danach wird anhand der echten Ausgabe entschieden, wie es weitergeht (Abschnitt 7).
+1. **The runtime becomes a library.** A program can take `moldable-views-rt` as a dependency and then has the runtime
+   on its own classpath. The plugin uses this runtime if it is there, and injects as it does today otherwise.
+2. **The program prints the views itself.** Without a debugger, the program calls `plan` and `mold` itself and writes
+   the result to the console as raw JSON.
 
-Der Hintergrund aus dem Paper *Moldable Exceptions* (Chiş, Gîrba, Nierstrasz, Onward! 2024): Die Exception liefert
-ihre Views selbst, und ein Werkzeug fragt sie nur ab. Der Debugger ist dabei ein Abnehmer. Die Konsole ist ein zweiter
-Abnehmer derselben Views. Dafür müssen die Views dort laufen können, wo das Programm läuft, also in der Library.
+After that, the real output decides how to go on (section 7).
 
-## 1. Entscheidungen
+The background from the paper *Moldable Exceptions* (Chiş, Gîrba, Nierstrasz, Onward! 2024): the exception supplies
+its own views, and a tool only asks for them. The debugger is one consumer. The console is a second consumer of the
+same views. For that, the views must be able to run where the program runs, so in the library.
 
-| Frage | Entscheidung |
+## 1. Decisions
+
+| Question | Decision |
 |---|---|
-| Wie kommt die Runtime ins Programm? | Als Dependency `moldable-views-rt`. Sie bringt `moldable-views` mit (`api`). Die Module bleiben getrennt |
-| Wer nur Views schreiben will | Nimmt `moldable-views` allein. Beim Debuggen injiziert das Plugin die Runtime |
-| Benutzt die Runtime die Typen aus `moldable-views`? | Nein. Sie findet Views über den Namen der Annotation und liest per Reflection (Abschnitt 3.5) |
-| Was macht das Plugin beim Debuggen? | Runtime im Programm vorhanden: benutzen. Sonst: injizieren wie heute |
-| Bleibt das Injizieren? | Ja. Programme ohne die Library bekommen weiterhin Views (Abschnitt 3.4) |
-| Versionierung zwischen Plugin und Runtime | Keine. Beide kommen aus demselben Repo und werden zusammen gebaut |
-| Einschränkungen der Runtime | Wie heute: Java 8, nur JDK. Also keine JSON-Library |
-| Was wird ohne Debugger ausgegeben? | Die fertig gemoldeten Views, genau das JSON von `ExceptionMolder.mold` (dasselbe Format wie mit Debugger) |
-| Welche Daten haben Views ohne Debugger? | Nur die Exception selbst: Felder, Message, Cause-Kette, `getStackTrace()` |
-| `@StackFrames`, `@PsiQuery` ohne Debugger | Die View zeigt `unavailable` mit Grund, statt zu laufen |
-| Welche Exceptions? | Explizit (`ExceptionPrinter.print(t)`, z. B. im `catch`) und unbehandelte (`ExceptionPrinter.install()`) |
-| Wohin? | `System.err`, oder ein `PrintStream`, den das Programm übergibt |
-| Format | Eine Zeile pro Exception: `[moldex] ` + Snapshot-JSON |
-| Konfiguration | Keine. Wer `print` oder `install` aufruft, will die Ausgabe |
-| JSON oder Binär zwischen Runtime und Plugin | Bleibt wie heute (Runtime → Plugin JSON, Plugin → Runtime binär). Siehe Abschnitt 7 |
+| How does the runtime get into the program? | As the dependency `moldable-views-rt`. It brings `moldable-views` with it (`api`). The modules stay separate |
+| Who only wants to write views | Takes `moldable-views` alone. When debugging, the plugin injects the runtime |
+| Does the runtime use the types from `moldable-views`? | No. It finds views by the name of the annotation and reads by reflection (section 3.5) |
+| What does the plugin do when debugging? | Runtime present in the program: use it. Otherwise: inject as today |
+| Does injection stay? | Yes. Programs without the library still get views (section 3.4) |
+| Versioning between plugin and runtime | None. Both come from the same repository and are built together |
+| Restrictions of the runtime | As today: Java 8, JDK only. So no JSON library |
+| What is printed without a debugger? | The molded views, exactly the JSON of `ExceptionMolder.mold` (the same format as with a debugger) |
+| Which data do views have without a debugger? | Only the exception itself: fields, message, cause chain, `getStackTrace()` |
+| `@StackFrames`, `@PsiQuery` without a debugger | The view shows `unavailable` with a reason instead of running |
+| Which exceptions? | Explicit ones (`ExceptionPrinter.print(t)`, e.g. in a `catch`) and uncaught ones (`ExceptionPrinter.install()`) |
+| Where to? | `System.err`, or a `PrintStream` the program passes in |
+| Format | One line per exception: `[moldex] ` + snapshot JSON |
+| Configuration | None. Whoever calls `print` or `install` wants the output |
+| JSON or binary between runtime and plugin | Stays as today (runtime → plugin JSON, plugin → runtime binary). See section 7 |
 
-## 2. Gesamtbild
+## 2. Overview
 
 ```mermaid
 flowchart TB
-  subgraph APP["Programm"]
+  subgraph APP["Program"]
     direction TB
     EX(["Exception"])
-    C1["gefangen: im catch<br/>ExceptionPrinter.print(e)"]
-    C2["unbehandelt: Default-Uncaught-Handler<br/>ExceptionPrinter.install()"]
-    subgraph RT["moldable-views-rt (Runtime, als Dependency auf dem Classpath)"]
+    C1["caught: in the catch<br/>ExceptionPrinter.print(e)"]
+    C2["uncaught: default uncaught handler<br/>ExceptionPrinter.install()"]
+    subgraph RT["moldable-views-rt (runtime, as a dependency on the classpath)"]
       direction TB
-      PR["ExceptionPrinter (neu)"]
-      PL["ExceptionMolder.plan(e)<br/>Views finden"]
-      MO["ExceptionMolder.mold(plan, data, handles)<br/>Views ausführen"]
+      PR["ExceptionPrinter (new)"]
+      PL["ExceptionMolder.plan(e)<br/>find the views"]
+      MO["ExceptionMolder.mold(plan, data, handles)<br/>run the views"]
       PR --> PL --> MO
     end
     EX --> C1 & C2
     C1 & C2 --> PR
   end
-  PR -- "[moldex] {...}" --> OUT[["System.err / PrintStream<br/>Konsole oder Logdatei"]]
+  PR -- "[moldex] {...}" --> OUT[["System.err / PrintStream<br/>console or log file"]]
 
-  subgraph IDE["IntelliJ-Plugin (nur beim Debuggen)"]
+  subgraph IDE["IntelliJ plugin (only when debugging)"]
     direction TB
-    HL{"HelperLoader:<br/>Runtime im Programm?"}
-    USE["benutzen"]
-    INJ["injizieren (wie heute)"]
-    DM["DebuggeeMolder<br/>plan, Daten auflösen, mold"]
+    HL{"HelperLoader:<br/>runtime in the program?"}
+    USE["use it"]
+    INJ["inject (as today)"]
+    DM["DebuggeeMolder<br/>plan, resolve data, mold"]
     DLG["MoldableViewsDialog"]
-    HL -- ja --> USE --> DM
-    HL -- nein --> INJ --> DM
+    HL -- yes --> USE --> DM
+    HL -- no --> INJ --> DM
     DM --> DLG
   end
   DM -. "JDI: plan / mold(plan, data, handles)" .-> RT
 ```
 
-- **Eine Runtime, zwei Aufrufer.** Ohne Debugger ruft das Programm `plan` und `mold(plan, null, null)` selbst auf. Mit
-  Debugger ruft das Plugin dieselben zwei Methoden über JDI auf und liefert die Debugger-Daten mit.
-- **Es gibt keine neue Molding-API.** Neu ist nur `ExceptionPrinter`: ein Aufruf von `plan` und `mold` und eine Zeile
-  Ausgabe.
-- **Nichts geht an IntelliJ.** Ohne Debugger schreibt das Programm Text in die Konsole oder in eine Datei. IntelliJ
-  muss dort, wo das Programm läuft, nicht vorhanden sein.
+- **One runtime, two callers.** Without a debugger, the program calls `plan` and `mold(plan, null, null)` itself. With
+  a debugger, the plugin calls the same two methods through JDI and supplies the debugger data.
+- **There is no new molding API.** Only `ExceptionPrinter` is new: one call of `plan` and `mold` and one line of
+  output.
+- **Nothing goes to IntelliJ.** Without a debugger, the program writes text to the console or to a file. IntelliJ does
+  not have to exist where the program runs.
 
-## 3. Schritt 1: Runtime in die Library
+## 3. Step 1: the runtime becomes a library
 
 ### 3.1 Build
 
-- `moldable-views-rt/build.gradle.kts`: `api(project(":moldable-views"))`. Wer die Runtime als Dependency hat,
-  bekommt die Annotationen und `DebugViews` mit.
-- `moldable-views` bleibt ohne Abhängigkeiten. Wer nur Views schreiben will, nimmt dieses Modul allein.
-- `moldable-views-rt` bleibt ein eigenes Modul mit seiner Klassenliste `META-INF/moldexj/runtime-classes`. Das Plugin
-  braucht genau diese Klassen zum Injizieren.
-- Die Demos (`samples/demos`) hängen weiter nur von `moldable-views` ab. Bei ihnen wird immer injiziert, sie bleiben
-  der Test für diesen Weg.
-- Neu: `samples/console-demo` hängt von `moldable-views-rt` ab. Es ist der Test dafür, dass das Plugin die Runtime des
-  Programms benutzt, und bekommt in Schritt 2 die Ausgabe in die Konsole.
+- `moldable-views-rt/build.gradle.kts`: `api(project(":moldable-views"))`. Whoever has the runtime as a dependency
+  gets the annotations and `DebugViews` with it.
+- `moldable-views` stays without dependencies. Whoever only wants to write views takes this module alone.
+- `moldable-views-rt` stays a module of its own with its class list `META-INF/moldexj/runtime-classes`. The plugin
+  needs exactly these classes for injection.
+- The demos (`samples/demos`) still depend only on `moldable-views`. For them the runtime is always injected; they
+  stay the test for this path.
+- New: `samples/console-demo` depends on `moldable-views-rt`. It is the test that the plugin uses the program's
+  runtime, and it gets the console output in step 2.
 
-| Das Programm hat | Views schreiben | Ausgabe in die Konsole | Beim Debuggen |
+| The program has | Write views | Output to the console | When debugging |
 |---|---|---|---|
-| nichts | nein | nein | Runtime wird injiziert, nur Built-in Views (später: View-Packs, Abschnitt 7) |
-| `moldable-views` | ja | nein | Runtime wird injiziert |
-| `moldable-views-rt` | ja | ja | Runtime des Programms wird benutzt |
+| nothing | no | no | runtime is injected, built-in views only (later: view packs, section 7) |
+| `moldable-views` | yes | no | runtime is injected |
+| `moldable-views-rt` | yes | yes | the program's runtime is used |
 
-### 3.2 Erkennen oder injizieren (`HelperLoader`)
+### 3.2 Detect or inject (`HelperLoader`)
 
 ```mermaid
 flowchart TB
-  S(["entryClass(context, vm)"]) --> C{"im Cache<br/>und benutzbar?"}
-  C -- ja --> R(["ClassType zurückgeben"])
-  C -- nein --> A{"ExceptionMolder schon<br/>im Programm geladen?<br/>(vm.classesByName, ohne invoke)"}
-  A -- ja --> U["diese Klasse benutzen"]
-  A -- nein --> B{"Loader des Frames vorhanden<br/>und kann ExceptionMolder laden?<br/>(process.findClass)"}
-  B -- ja --> U
-  B -- nein --> I["injizieren wie heute:<br/>neuer Loader, defineClass für jede Klasse"]
-  U --> K["in den Cache"]
+  S(["entryClass(context, vm)"]) --> C{"in the cache<br/>and usable?"}
+  C -- yes --> R(["return the ClassType"])
+  C -- no --> A{"ExceptionMolder already<br/>loaded in the program?<br/>(vm.classesByName, no invoke)"}
+  A -- yes --> U["use this class"]
+  A -- no --> B{"frame has a loader<br/>and it can load ExceptionMolder?<br/>(process.findClass)"}
+  B -- yes --> U
+  B -- no --> I["inject as today:<br/>new loader, defineClass for each class"]
+  U --> K["into the cache"]
   I --> K
   K --> R
 ```
 
-Der Ablauf in `HelperLoader.entryClass`:
+The flow in `HelperLoader.entryClass`:
 
-1. **Cache** wie heute (pro VM und Class Loader des Frames).
-2. **Schon geladen?** `vm.classesByName("ch.moldexj.runtime.ExceptionMolder")` ist ein reiner JDI-Lesezugriff. Gibt es
-   eine Klasse, die nicht aus einem vom Plugin angelegten Loader stammt, wird sie benutzt. Dafür merkt sich
-   `HelperLoader` die Loader, die er selbst angelegt hat.
-3. **Ladbar?** Hat der angehaltene Frame einen Class Loader, versucht `process.findClass(context, name, loader)`, die
-   Klasse darüber zu laden. Liegt die Library auf dem Classpath, klappt das.
-4. **Sonst injizieren:** der heutige Code, unverändert.
+1. **Cache** as today (per VM and class loader of the frame).
+2. **Already loaded?** `vm.classesByName("ch.moldexj.runtime.ExceptionMolder")` is a pure JDI read. If there is a
+   class that does not come from a loader the plugin created, it is used. For this, `HelperLoader` remembers the
+   loaders it created itself.
+3. **Loadable?** If the suspended frame has a class loader, `process.findClass(context, name, loader)` tries to load
+   the class through it. If the library is on the classpath, this works.
+4. **Otherwise inject:** today's code, unchanged.
 
-Ein Fall bleibt beim Injizieren, obwohl die Library da ist: Der Debugger hält im JDK an (z. B. dort, wo `java.time` die
-`DateTimeParseException` wirft), und das Programm hat die Runtime bis dahin noch nie benutzt. Der Frame hat dann den
-Bootstrap-Loader, der die Library nicht sieht. Das ist harmlos: Die Runtime hält keinen Zustand, und beide Kopien sind
-derselbe Code. Hat das Programm vorher schon eine Exception ausgegeben, greift Punkt 2.
+One case still injects although the library is there: the debugger stops inside the JDK (e.g. where `java.time` throws
+the `DateTimeParseException`), and the program has never used the runtime up to then. The frame then has the bootstrap
+loader, which does not see the library. This is harmless: the runtime holds no state, and both copies are the same
+code. If the program has printed an exception before, item 2 applies.
 
-### 3.3 Was sich für die Runtime ändert
+### 3.3 What changes for the runtime
 
-Am Code nichts. Die Runtime sucht Views schon heute über `Reflection.classLoaders()` (eigener Loader und
-Context-Class-Loader des Threads). Läuft sie aus der Library, ist ihr eigener Loader der des Programms, und sie findet
-dieselben Manifeste.
+Nothing in the code. The runtime already looks for views through `Reflection.classLoaders()` (its own loader and the
+thread's context class loader). When it runs from the library, its own loader is the program's, and it finds the same
+manifests.
 
-Nur die Kommentare stimmen nicht mehr: `ExceptionMolder`, `Reflection` und `build.gradle.kts` beschreiben die Runtime
-als „läuft nur im debuggten Programm, vom Plugin injiziert“. Neu: „läuft im Programm, entweder als Library oder vom
-Plugin injiziert“.
+Only the comments are no longer right: `ExceptionMolder`, `Reflection` and `build.gradle.kts` describe the runtime as
+"runs only in the debugged program, injected by the plugin". New: "runs in the program, either as a library or
+injected by the plugin".
 
-### 3.4 Warum das Injizieren bleibt
+### 3.4 Why injection stays
 
-- **Views für fremde Exceptions:** Statische Views für Exceptions aus dem JDK oder aus Libraries (Regex, Date, Mockito)
-  können über ein Manifest auf dem Classpath liegen, ohne dass das Programm `moldable-views` als Dependency hat.
-- **Views ohne Runtime im Programm:** Ein Programm, das nur `moldable-views` hat, soll beim Debuggen trotzdem seine
-  Views bekommen.
-- **Der Code existiert und funktioniert.**
+- **Views for foreign exceptions:** static views for exceptions from the JDK or from libraries (regex, date, Mockito)
+  can be on the classpath through a manifest without the program having `moldable-views` as a dependency.
+- **Views without the runtime in the program:** a program that only has `moldable-views` should still get its views
+  when debugging.
+- **The code exists and works.**
 
-Der Preis: Die Runtime muss weiter mit Java 8 und nur dem JDK auskommen.
+The price: the runtime must keep working with Java 8 and the JDK only.
 
-### 3.5 Richtung der Abhängigkeit und Duck-Typing
+### 3.5 Direction of the dependency, and duck typing
 
-Die Runtime hängt im Build von `moldable-views` ab, benutzt in ihrem Code aber **keinen** Typ daraus. Das sieht
-widersprüchlich aus und ist Absicht.
+In the build, the runtime depends on `moldable-views`, but its code uses **no** type from it. This looks contradictory
+and is intended.
 
-**Die Abhängigkeit ist nur Verpackung.** Sie sorgt dafür, dass eine Zeile im Build reicht, um Views zu schreiben und
-auszugeben.
+**The dependency is packaging only.** It makes one line in the build enough to write views and to print them.
 
-**Der Code darf die Typen nicht benutzen.** Für die JVM ist eine Klasse nur dann dieselbe, wenn Name *und* Class Loader
-gleich sind. Dieselbe Klassendatei aus zwei Loadern ergibt zwei verschiedene Klassen. Genau das kommt hier vor:
+**The code must not use the types.** To the JVM, a class is the same class only if the name *and* the class loader are
+the same. The same class file from two loaders gives two different classes. Exactly this happens here:
 
-- Eine injizierte Runtime lebt in einem eigenen Loader, einem Kind des Loaders des angehaltenen Frames.
-- Hält der Debugger im JDK an (z. B. bei der Date-Demo), ist das der Bootstrap-Loader. Der injizierte Loader sieht das
-  `moldable-views` des Programms dann gar nicht.
-- Ein Programm ganz ohne Dependency bekommt später auch `moldable-views` injiziert (View-Packs), neben dem, was das
-  Programm vielleicht selbst hat.
+- An injected runtime lives in a loader of its own, a child of the loader of the suspended frame.
+- If the debugger stops inside the JDK (e.g. in the date demo), that is the bootstrap loader. The injected loader then
+  does not see the program's `moldable-views` at all.
+- A program with no dependency at all will later get `moldable-views` injected too (view packs), next to whatever the
+  program may have itself.
 
-Würde die Runtime mit *ihrer* Kopie `method.getAnnotation(DebugView.class)` fragen, fände sie an einer View, die mit
-der Kopie *des Programms* annotiert ist, nichts. Die View verschwände ohne Fehlermeldung. Ein Cast des Ergebnisses auf
-`DebugViews.View` der Runtime schlüge genauso fehl.
+If the runtime asked `method.getAnnotation(DebugView.class)` with *its* copy, it would find nothing on a view that is
+annotated with the *program's* copy. The view would disappear without an error message. A cast of the result to the
+runtime's `DebugViews.View` would fail in the same way.
 
-Der Vergleich über den Namen und das Lesen per Reflection haben dieses Problem nicht: Sie funktionieren mit jeder
-Kopie in jedem Loader. Die Regeln für den Code der Runtime:
+Comparing by name and reading by reflection do not have this problem: they work with every copy in every loader. The
+rules for the runtime's code:
 
-- Annotationen über `Reflection.debugView` finden, nie über ein Klassenliteral aus `moldable-views`.
-- Ergebnisse über `Reflection.read` / `readString` lesen (`ResultConverter`), nie mit `instanceof` oder Cast.
-- Parameter über einen `java.lang.reflect.Proxy` des Parametertyps der View übergeben (`ValueAdapter`).
+- Find annotations through `Reflection.debugView`, never through a class literal from `moldable-views`.
+- Read results through `Reflection.read` / `readString` (`ResultConverter`), never with `instanceof` or a cast.
+- Pass parameters through a `java.lang.reflect.Proxy` of the view's parameter type (`ValueAdapter`).
 
-Verworfen: die Typen direkt benutzen und `moldable-views` nur injizieren, wenn es im Programm fehlt. Das scheitert am
-Stop im JDK (zweiter Punkt oben). Man müsste den injizierten Loader an einen anderen Loader hängen, und das wird bei
-Programmen mit mehreren Class Loadern unzuverlässig.
+Rejected: use the types directly and inject `moldable-views` only if the program lacks it. This fails at a stop inside
+the JDK (second point above). The injected loader would have to be attached to a different loader, and that becomes
+unreliable for programs with several class loaders.
 
-Dass ein Projekt seine eigene `@DebugView` deklarieren kann, folgt aus demselben Mechanismus, ist aber kein Ziel mehr
-und wird nicht eigens getestet.
+That a project can declare its own `@DebugView` follows from the same mechanism, but it is no longer a goal and is not
+tested separately.
 
-Dokumentiert ist das auch in `moldable-views-rt/README.md` („Why duck typing“), im Javadoc von `ExceptionMolder` und
+This is also documented in `moldable-views-rt/README.md` ("Why duck typing"), in the Javadoc of `ExceptionMolder` and
 in `moldable-views-rt/build.gradle.kts`.
 
-## 4. Schritt 2: Rohes JSON in die Konsole
+## 4. Step 2: raw JSON to the console
 
-### 4.1 Klassen
+### 4.1 Classes
 
 ```mermaid
 classDiagram
   direction LR
 
   class ExceptionPrinter {
-    <<neu>>
+    <<new>>
     +print(Throwable t)$ void
     +print(Throwable t, PrintStream out)$ void
     +install()$ void
@@ -211,7 +213,7 @@ classDiagram
   }
 
   class UncaughtHandler {
-    <<neu, privat in ExceptionPrinter>>
+    <<new, private in ExceptionPrinter>>
     UncaughtExceptionHandler previous
     uncaughtException(Thread thread, Throwable e) void
   }
@@ -226,30 +228,29 @@ classDiagram
   UncaughtHandler ..> ExceptionPrinter : print
 ```
 
-`ExceptionPrinter` liegt neben `ExceptionMolder` in `ch.moldexj.runtime`. Weitere Klassen braucht es nicht. Die Klasse
-landet automatisch in der Klassenliste und wird beim Injizieren mit definiert. Das schadet nicht, das Plugin ruft sie
-nie auf.
+`ExceptionPrinter` sits next to `ExceptionMolder` in `ch.moldexj.runtime`. No further classes are needed. The class
+ends up in the class list automatically and is defined along with the others on injection. That does no harm; the
+plugin never calls it.
 
-### 4.2 `ExceptionMolder.mold`: `data == null` heißt „kein Debugger“
+### 4.2 `ExceptionMolder.mold`: `data == null` means "no debugger"
 
-Heute funktioniert `mold(plan, null, null)` schon fast. Hat der Plan aber Requests (eine View will `@StackFrames`),
-schreibt `mold` die irreführende Note „The debugger sent 0 values for 1 requests.“ und als Grund „The debugger did not
-send this value.“.
+Before this step, `mold(plan, null, null)` already almost worked. But if the plan has requests (a view wants
+`@StackFrames`), `mold` wrote the misleading note "The debugger sent 0 values for 1 requests." and the reason "The
+debugger did not send this value.".
 
-Neu:
+New:
 
-- `data == null`: Es gibt keinen Debugger. Jeder Request bekommt ein `Unavailable` mit dem Grund *„This view needs
-  data from the debugger (for example @StackFrames). Without a debugger, a view only sees the exception itself.“*
-  Keine Note.
-- `data != null`: wie heute.
+- `data == null`: there is no debugger. Every request gets an `Unavailable` with the reason *"This view needs data
+  from the debugger (for example @StackFrames). Without a debugger, a view only sees the exception itself."* No note.
+- `data != null`: as before.
 
-Für das Plugin ändert sich nichts. Es übergibt `null` nur, wenn der Plan keine Requests hat. Das JSON bleibt genau
-das heutige Format, ohne neue Felder.
+Nothing changes for the plugin. It passes `null` only when the plan has no requests. The JSON keeps exactly its
+format, without new fields.
 
-`@StackFrames` wird dabei nicht halb aus `getStackTrace()` gefüllt (Klasse, Methode, Zeile, aber leere Locals). Eine
-View, die `frame.local("cart")` liest, bekäme sonst `null` und würde „keine Daten“ statt „nicht verfügbar“ zeigen. Den
-Stack-Trace hat jede View ohnehin über `@Exception` und `e.getStackTrace()`. Das Paper kennt denselben Fall: Die
-Diff-View von `AssertionFailure` prüft zuerst `gtHasStack` und liefert sonst eine leere View.
+`@StackFrames` is not half-filled from `getStackTrace()` (class, method, line, but empty locals). A view that reads
+`frame.local("cart")` would otherwise get `null` and show "no data" instead of "not available". Every view has the
+stack trace anyway through `@Exception` and `e.getStackTrace()`. The paper knows the same case: the diff view of
+`AssertionFailure` first checks `gtHasStack` and returns an empty view otherwise.
 
 ### 4.3 `ExceptionPrinter`
 
@@ -275,18 +276,18 @@ public final class ExceptionPrinter {
 
 1. `plan = ExceptionMolder.plan(t)`
 2. `json = ExceptionMolder.mold(plan, null, null)`
-3. `out.println("[moldex] " + json)`. Ein `println` schreibt die ganze Zeile auf einmal, Zeilen aus mehreren Threads
-   mischen sich nicht.
-4. Alles in `try/catch (Throwable)`. Geht etwas schief, steht eine kurze Zeile mit dem Grund in `out`, nie eine
-   Exception beim Aufrufer.
+3. `out.println("[moldex] " + json)`. One `println` writes the whole line at once; lines from several threads do not
+   mix.
+4. Everything in `try/catch (Throwable)`. If something goes wrong, a short line with the reason is written to `out`,
+   never an exception to the caller.
 
-`print` gibt immer aus, auch wenn die Exception keine eigenen Views hat (dann nur die Built-in Views Details,
+`print` always prints, also when the exception has no views of its own (then only the built-in views Details,
 Stack trace, Fields).
 
-Eine View, die selbst wirft, löst keine Endlosschleife aus: `ViewRunner` fängt das schon heute ab und macht daraus
-ein Tab der Art `error`.
+A view that throws does not cause an endless loop: `ViewRunner` already catches that and turns it into a tab of kind
+`error`.
 
-### 4.4 Uncaught-Handler
+### 4.4 Uncaught handler
 
 ```mermaid
 sequenceDiagram
@@ -295,156 +296,156 @@ sequenceDiagram
   participant U as UncaughtHandler
   participant E as ExceptionMolder
   participant O as System.err
-  participant P as vorheriger Handler
+  participant P as previous handler
 
   T->>U: uncaughtException(thread, e)
   U->>E: plan(e)
   E-->>U: MoldPlan
   alt plan.moldable
     U->>E: mold(plan, null, null)
-    E-->>U: Snapshot-JSON
+    E-->>U: snapshot JSON
     U->>O: [moldex] {...}
   end
-  alt es gab einen vorherigen Handler
+  alt there was a previous handler
     U->>P: uncaughtException(thread, e)
   else
-    U->>O: Exception in thread "..." + Stack-Trace
+    U->>O: Exception in thread "..." + stack trace
   end
 ```
 
-- `Thread.setDefaultUncaughtExceptionHandler` ist **JVM-weit**. Es gilt für alle Threads ohne eigenen Handler, auch für
-  `main` und den Swing-EDT. Man muss sich nicht in jeden Thread einhängen.
-- `install()` merkt sich den vorherigen Default-Handler und ruft ihn danach auf.
-- **Gab es keinen vorherigen Handler, druckt der Handler den Stack-Trace selbst**, so wie die JVM es sonst tut
-  (`Exception in thread "main" …`). Er darf dafür nicht `thread.getThreadGroup().uncaughtException(...)` aufrufen:
-  Diese Methode ruft wieder den Default-Handler auf, also ihn selbst, und das wäre eine Endlosschleife.
-- Der Handler gibt die `[moldex]`-Zeile nur aus, wenn `plan.moldable`. Sonst stünden bei jeder unbehandelten Exception
-  die Built-in Views doppelt zum Stack-Trace in der Konsole.
-- Zweimal `install()` installiert nur einmal.
-- Grenze: Exceptions, die das Programm oder ein Framework fängt, kommen hier nicht an. Dafür gibt es `print(e)` im
+- `Thread.setDefaultUncaughtExceptionHandler` is **JVM-wide**. It applies to all threads without a handler of their
+  own, including `main` and the Swing EDT. There is no need to hook into each thread.
+- `install()` remembers the previous default handler and calls it afterwards.
+- **If there was no previous handler, the handler prints the stack trace itself**, the way the JVM otherwise does
+  (`Exception in thread "main" …`). It must not call `thread.getThreadGroup().uncaughtException(...)` for this: that
+  method calls the default handler again, so itself, and that would be an endless loop.
+- The handler prints the `[moldex]` line only if `plan.moldable`. Otherwise every uncaught exception would have the
+  built-in views in the console in addition to the stack trace.
+- Calling `install()` twice installs only once.
+- Limit: exceptions that the program or a framework catches do not arrive here. For those there is `print(e)` in the
   `catch`.
 
-Läuft das Programm mit `install()` unter dem Debugger, passiert beides: Das Plugin hält an der unbehandelten Exception
-an und zeigt den Dialog, und nach dem Fortsetzen schreibt der Handler die Zeile in die Konsole.
+If the program runs with `install()` under the debugger, both happen: the plugin stops at the uncaught exception and
+shows the dialog, and after resuming, the handler writes the line to the console.
 
-### 4.5 Ausgabe
+### 4.5 Output
 
-Eine Zeile pro Exception, mit dem Präfix `[moldex] `, damit man die Zeilen in gemischter Ausgabe findet:
+One line per exception, with the prefix `[moldex] `, so that the lines can be found in mixed output:
 
 ```
 [moldex] {"chain":[{"label":"Exception","depth":0,"type":"java.time.format.DateTimeParseException","message":"Text '2026-13-01' could not be parsed ...","moldable":true,"views":[...]}],"notes":[]}
 ```
 
-`Json.string` escaped `\n`, `\r`, `\t` und Steuerzeichen, eine View mit mehrzeiligem Text bleibt also eine Zeile.
+`Json.string` escapes `\n`, `\r`, `\t` and control characters, so a view with multi-line text stays one line.
 
 ### 4.6 Samples
 
-Jeder der beiden Wege hat sein eigenes Projekt, damit keiner davon abhängt, wo der Debugger gerade anhält:
+Each of the two paths has its own project, so that neither depends on where the debugger happens to stop:
 
-| Projekt | Dependency | Beim Debuggen | Konsole |
+| Project | Dependency | When debugging | Console |
 |---|---|---|---|
-| `samples/demos` | `moldable-views` | Runtime wird injiziert | nein, die Runtime fehlt im Programm |
-| `samples/console-demo` | `moldable-views-rt` | Runtime des Programms wird benutzt | ja |
+| `samples/demos` | `moldable-views` | runtime is injected | no, the program lacks the runtime |
+| `samples/console-demo` | `moldable-views-rt` | the program's runtime is used | yes |
 
-`samples/console-demo` wirft heute eine `OrderRejectedException` mit einer Tabellen-View. In Schritt 2 ruft sein `main`
-`ExceptionPrinter.install()` auf. Damit kann man dasselbe Programm mit und ohne Debugger laufen lassen und beide
-Ergebnisse vergleichen. Braucht es dafür mehr Fälle (eine View für eine JDK-Exception, eine mit `@StackFrames`),
-kommen sie in dieses Sample.
+`samples/console-demo` throws an `OrderRejectedException` with a table view. Its `main` calls
+`ExceptionPrinter.install()`, prints a caught exception with `print(e)` and then throws an uncaught one. This way the
+same program can be run with and without a debugger and both results compared. If more cases are needed for this (a
+view for a JDK exception, one with `@StackFrames`), they go into this sample.
 
-`samples/demos` bleibt unverändert und ruft `install()` nicht auf. Nebenbei: Der Eintrag `mainClass = "demo.Main"`
-in seinem `build.gradle.kts` zeigt ins Leere, jede Demo hat ihr eigenes `main`.
+`samples/demos` stays unchanged and does not call `install()`. As an aside: the entry `mainClass = "demo.Main"` in its
+`build.gradle.kts` points nowhere; every demo has its own `main`.
 
-## 5. Was ohne Debugger geht
+## 5. What works without a debugger
 
-Locals und Stack-Frames gibt es nur, solange die Frames noch auf dem Thread liegen, also am Throw. Ohne Debugger sieht
-eine View nur die Exception. Die Begründung (`LiveStackFrame`, `athrow`-Agent, JVMTI, Beispiel Regex) steht in
-[design-views-ohne-debugger.md](design-views-ohne-debugger.md), Abschnitt 2, und gilt weiter.
+Locals and stack frames only exist while the frames are still on the thread, so at the throw. Without a debugger, a
+view only sees the exception. The reasoning (`LiveStackFrame`, `athrow` agent, JVMTI, the regex example) is in
+[design-views-ohne-debugger.md](design-views-ohne-debugger.md), section 2, and still holds.
 
-| Demo | View | Braucht | Ohne Debugger |
+| Demo | View | Needs | Without a debugger |
 |---|---|---|---|
-| Constraints | Violations | `@Exception` | ja |
-| Date | Parse position, Other formats | `@Exception` | ja |
-| ApiContract | Diff, Mismatches, Request | Instance-View (die Exception selbst) | ja |
-| PDF | Diff | Instance-View | ja (gibt zwei Dateipfade aus) |
-| Regex | Pattern | `@Exception` | ja |
-| Regex | Parser, Fix | `@StackFrames(fields = true)` | nein |
-| Mockito | Matchers, Calls | `@StackFrames` (+ `@PsiQuery`) | nein |
-| alle | Details, Stack trace, Fields (Built-in) | die Exception | ja |
+| Constraints | Violations | `@Exception` | yes |
+| Date | Parse position, Other formats | `@Exception` | yes |
+| ApiContract | Diff, Mismatches, Request | instance view (the exception itself) | yes |
+| PDF | Diff | instance view | yes (prints two file paths) |
+| Regex | Pattern | `@Exception` | yes |
+| Regex | Parser, Fix | `@StackFrames(fields = true)` | no |
+| Mockito | Matchers, Calls | `@StackFrames` (+ `@PsiQuery`) | no |
+| all | Details, Stack trace, Fields (built-in) | the exception | yes |
 
-Weitere Grenzen:
+Further limits:
 
-- **Zeitpunkt:** Die Views laufen dort, wo `print` aufgerufen wird bzw. im Uncaught-Handler, nicht am Throw. Liest eine
-  Instance-View Objekte, auf die die Exception zeigt, können `finally`-Blöcke diese inzwischen verändert haben.
-- **Kosten im Programm:** Views laufen jetzt im Programmfluss. Sie sollen schnell und ohne Seiteneffekte sein (galt
-  schon bisher).
-- **Format:** Das JSON ist für den Dialog gebaut (`priority`, Highlight-Spans mit Offsets, Styles). Ob es so für
-  Menschen oder eine AI taugt, zeigt erst die Ausgabe.
+- **Point in time:** the views run where `print` is called, or in the uncaught handler, not at the throw. If an
+  instance view reads objects the exception points to, `finally` blocks may have changed them in the meantime.
+- **Cost in the program:** views now run in the program's flow. They should be fast and free of side effects (this
+  was already the rule).
+- **Format:** the JSON is built for the dialog (`priority`, highlight spans with offsets, styles). Whether it suits
+  humans or an AI as it is, only the output shows.
 
-## 6. Umsetzungsschritte
+## 6. Implementation steps
 
-**Schritt 1: Runtime in die Library**
+**Step 1: the runtime becomes a library**
 
-1. `moldable-views-rt`: `api(project(":moldable-views"))`. Neues Sample `samples/console-demo` mit der Runtime als
-   Dependency.
-2. `HelperLoader.entryClass`: erst im Programm suchen (geladen, dann ladbar), sonst injizieren. Die selbst angelegten
-   Loader merken.
-3. Kommentare in `ExceptionMolder`, `Reflection`, `HelperLoader` und `moldable-views-rt/build.gradle.kts` anpassen,
-   das Duck-Typing in den READMEs begründen (Abschnitt 3.5).
-4. **Test in `runIde`** (zugleich der erste echte Lauf von `plan`/`mold` im IDE, der laut
-   [design-plan-mold.md](design-plan-mold.md) noch aussteht):
-   - `samples/console-demo`: Der Dialog zeigt die View „Stock“, und es wird **nicht** injiziert (Breakpoint in
-     `HelperLoader.inject` wird nicht erreicht).
-   - `samples/demos`, Stop im eigenen Code (ApiContract, PDF): Es wird injiziert, alles funktioniert wie vor diesem
-     Entwurf.
-   - `samples/demos`, Stop im JDK (Date): ebenso.
-   - `samples/demos` mit `@StackFrames` (Regex „Parser“): Die Debugger-Daten kommen an.
+1. `moldable-views-rt`: `api(project(":moldable-views"))`. New sample `samples/console-demo` with the runtime as a
+   dependency.
+2. `HelperLoader.entryClass`: look in the program first (loaded, then loadable), otherwise inject. Remember the
+   loaders it created itself.
+3. Adapt the comments in `ExceptionMolder`, `Reflection`, `HelperLoader` and `moldable-views-rt/build.gradle.kts`,
+   and explain the duck typing in the READMEs (section 3.5).
+4. **Test in `runIde`** (also the first real run of `plan`/`mold` in the IDE, which was still pending according to
+   [design-plan-mold.md](design-plan-mold.md)):
+   - `samples/console-demo`: the dialog shows the view "Stock", and nothing is injected (a breakpoint in
+     `HelperLoader.inject` is **not** reached).
+   - `samples/demos`, stop in its own code (ApiContract, PDF): the runtime is injected, everything works as before
+     this design.
+   - `samples/demos`, stop inside the JDK (Date): the same.
+   - `samples/demos` with `@StackFrames` (Regex "Parser"): the debugger data arrives.
 
-**Schritt 2: Rohes JSON in die Konsole**
+**Step 2: raw JSON to the console**
 
-5. `ExceptionMolder.mold`: `data == null` als „kein Debugger“.
-6. `ExceptionPrinter` mit `print`, `install`, `uninstall`.
-7. Tests in `moldable-views-rt` (JUnit 5 neu einrichten, das Modul hat noch keine Tests; die Test-Views brauchen den
-   Processor als `testAnnotationProcessor`):
-   - Exception mit `@Exception`-View: eine Zeile mit der View;
-   - View mit `@StackFrames`: `unavailable` mit dem neuen Grund, keine Note;
-   - `install()` und eine Exception in einem Thread: genau eine Zeile, der vorherige Handler wurde aufgerufen;
-   - `install()` ohne vorherigen Handler: Zeile und Stack-Trace, keine Endlosschleife;
-   - nicht moldable Exception im Handler: keine `[moldex]`-Zeile.
+5. `ExceptionMolder.mold`: `data == null` as "no debugger".
+6. `ExceptionPrinter` with `print`, `install`, `uninstall`.
+7. Tests in `moldable-views-rt` (set up JUnit 5, the module had no tests; the test views need the processor as
+   `testAnnotationProcessor`):
+   - exception with an `@Exception` view: one line with the view;
+   - view with `@StackFrames`: `unavailable` with the new reason, no note;
+   - `install()` and an exception in a thread: exactly one line, the previous handler was called;
+   - `install()` without a previous handler: line and stack trace, no endless loop;
+   - non-moldable exception in the handler: no `[moldex]` line.
 8. `samples/console-demo`: `ExceptionPrinter.install()` in `main`.
-9. Doku: Abschnitt „Ohne Debugger“ im README. Dieses Dokument vor dem Commit ins Englische übersetzen.
+9. Documentation: section "Without a debugger" in the README. This document in English, with the German original
+   kept as `design-runtime-in-library-de.md`.
 
-Danach anhalten und die Ausgabe von `samples/console-demo` anschauen.
+Then stop and look at the output of `samples/console-demo`.
 
-## 7. Später (nicht Teil dieses Entwurfs)
+## 7. Later (not part of this design)
 
-- **View-Packs (nächster Schritt nach der Konsole):** Views für Exceptions aus dem JDK (Regex, Date) einmal in einem
-  eigenen Modul schreiben, z. B. `moldable-views-jdk`. Das Plugin bringt das Modul mit und injiziert es zusammen mit
-  `moldable-views` und der Runtime in ein Programm, das nichts davon hat. So bekommt jedes Programm diese Views ohne
-  Dependency. Zu lösen:
-  - Injizierte Klassen haben keine Ressourcen. Das Plugin muss den Text des View-Manifests selbst an die Runtime
-    übergeben.
-  - Was injiziert wird, muss mit Java 8 laufen. Die Demos sind heute auf Java 21 eingestellt.
-  - Liegt das Pack schon auf dem Classpath, wird es über sein Manifest gefunden und nicht noch einmal injiziert.
-- **Modell statt String-JSON:** Heute setzen `ViewRunner` und `ViewJson` das JSON aus Strings zusammen. Sauberer wäre
-  ein kleines Modell (Snapshot, Knoten, View als Objekte) und getrennt davon Writer. Die Tests aus Schritt 2 sichern
-  den Umbau ab.
-- **Text-Writer:** die Views lesbar in der Konsole, auf dem Modell aufgebaut.
-- **Binär statt JSON zwischen Runtime und Plugin:** Mit dem Modell wäre das ein weiterer Writer. JSON bleibt für die
-  Konsole ohnehin nötig, Binär wäre also zusätzlich und keine Vereinheitlichung.
-- **AI:** die `[moldex]`-Zeilen als Kontext für einen Agent, verglichen mit „nur Stack-Trace“.
-- **Weitere Einhängepunkte:** Logger-Adapter (die meisten Exceptions werden gefangen und geloggt) und eine
-  JUnit-Extension (JUnit fängt die Exception eines fehlgeschlagenen Tests selbst). Beide rufen nur `print` auf.
-- **Java-Agent:** bringt die Runtime ohne Dependency in ein Programm und ruft `install()` auf.
-- **Action „Accept“:** die erwarteten Testdaten durch die neuen ersetzen, wie in der PDF-Fallstudie des Papers
-  (Abschnitt 6).
+- **View packs (next step after the console):** write views for exceptions from the JDK (regex, date) once in a
+  module of their own, e.g. `moldable-views-jdk`. The plugin ships the module and injects it together with
+  `moldable-views` and the runtime into a program that has none of them. This way every program gets these views
+  without a dependency. To be solved:
+  - Injected classes have no resources. The plugin has to pass the text of the view manifest to the runtime itself.
+  - Whatever is injected must run on Java 8. The demos are set to Java 21 today.
+  - If the pack is already on the classpath, it is found through its manifest and not injected again.
+- **Model instead of string JSON:** today `ViewRunner` and `ViewJson` assemble the JSON from strings. A small model
+  (snapshot, node, view as objects) with separate writers would be cleaner. The tests from step 2 secure this
+  rework.
+- **Text writer:** the views readable in the console, built on the model.
+- **Binary instead of JSON between runtime and plugin:** with the model, this would be one more writer. JSON stays
+  necessary for the console anyway, so binary would be an addition and not a unification.
+- **AI:** the `[moldex]` lines as context for an agent, compared with "stack trace only".
+- **Further hooks:** a logger adapter (most exceptions are caught and logged) and a JUnit extension (JUnit catches the
+  exception of a failed test itself). Both only call `print`.
+- **Java agent:** brings the runtime into a program without a dependency and calls `install()`.
+- **Action "Accept":** replace the expected test data with the new data, as in the PDF case study of the paper
+  (section 6).
 
-Verworfen: ein eigener Launcher, der das Programm ohne IntelliJ über JDI steuert. Er würde Locals liefern, ist aber
-neue Debugger-Infrastruktur und nicht das Thema dieser Arbeit.
+Rejected: a launcher of its own that controls the program through JDI without IntelliJ. It would supply locals, but it
+is new debugger infrastructure and not the topic of this work.
 
-## 8. Offene Fragen
+## 8. Open questions
 
-- **Uncaught-Handler nur bei `moldable`?** So vorgeschlagen. Alternative: immer, dann auch mit den Built-in Views.
-- **Präfix `[moldex]`:** behalten, oder reines JSON?
-- **Name:** `ExceptionPrinter`? Alternativen: `MoldedOutput`, `ConsoleMolder`.
-- **Stop im JDK vor der ersten Benutzung:** Reicht es, dort zu injizieren (Abschnitt 3.2)? Die Alternative wäre, die
-  Runtime über den Context-Class-Loader des Threads zu suchen, mit einem zusätzlichen Aufruf im Programm.
+- **Uncaught handler only for `moldable`?** Proposed this way. Alternative: always, then also with the built-in views.
+- **Prefix `[moldex]`:** keep it, or pure JSON?
+- **Name:** `ExceptionPrinter`? Alternatives: `MoldedOutput`, `ConsoleMolder`.
+- **Stop inside the JDK before the first use:** is injecting there enough (section 3.2)? The alternative would be to
+  look for the runtime through the thread's context class loader, with one additional call in the program.

@@ -113,6 +113,24 @@ Parameter annotations are not retained at run time, so **a view with parameters 
 own project: without a manifest such a view says so instead of running. The processor works with Gradle's incremental compilation;
 a project with its own `DebugView` annotation passes `-Amoldexj.debugView=com.acme.DebugView`.
 
+## Without a debugger
+
+A program that depends on `moldable-views-rt` can print the views of its exceptions itself, as one JSON line per
+exception:
+
+```java
+ExceptionPrinter.install();     // uncaught exceptions that have views
+ExceptionPrinter.print(e);      // a caught exception
+```
+
+```
+[moldex] {"chain":[{"label":"Exception","type":"...OrderRejectedException","moldable":true,"views":[{"title":"Stock","kind":"table",...}]}],"notes":[]}
+```
+
+Without a debugger a view only sees the exception itself; views that need `@StackFrames` or `@PsiQuery` say so
+instead of running. See [the runtime's README](moldable-views-rt/README.md#without-a-debugger) and
+`samples/console-demo`.
+
 ## Layout
 
 | Module | Runs in | Role |
