@@ -63,6 +63,15 @@ class ExceptionPrinterTest {
     }
 
     @Test
+    void printWritesTheStackFramesAsData() throws Exception {
+        ExceptionPrinter.print(new ViewedException("boom"));
+
+        String line = moldexLines().get(0);
+        assertTrue(line.contains("\"frames\":[{\"className\":\"ch.moldexj.runtime.ExceptionPrinterTest\","
+                + "\"methodName\":\"printWritesTheStackFramesAsData\",\"fileName\":\"ExceptionPrinterTest.java\",\"line\":"), line);
+    }
+
+    @Test
     void printToAStreamLeavesSystemErrAlone() throws Exception {
         ByteArrayOutputStream file = new ByteArrayOutputStream();
         ExceptionPrinter.print(new ViewedException("boom"), new PrintStream(file, true, "UTF-8"));

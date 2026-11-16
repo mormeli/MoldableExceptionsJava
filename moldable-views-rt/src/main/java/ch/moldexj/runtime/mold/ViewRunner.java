@@ -40,6 +40,7 @@ public final class ViewRunner {
                 + ",\"type\":" + Json.string(t.getClass().getName())
                 + ",\"message\":" + Json.string(Safe.message(t))
                 + ",\"moldable\":" + !planned.isEmpty()
+                + ",\"frames\":" + BuiltInViews.frames(t)
                 + ",\"views\":" + Json.array(views) + "}";
     }
 

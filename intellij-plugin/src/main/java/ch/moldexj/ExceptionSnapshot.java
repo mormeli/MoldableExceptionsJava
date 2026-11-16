@@ -38,12 +38,24 @@ public final class ExceptionSnapshot {
         public String type = "";
         public String message = "";
         public boolean moldable;
+        /** The stack trace as data, innermost frame first. Empty in snapshots written before this field existed. */
+        public List<Frame> frames = new ArrayList<>();
         public List<View> views = new ArrayList<>();
 
         public String shortType() {
             int dot = Math.max(type.lastIndexOf('.'), type.lastIndexOf('$'));
             return dot < 0 ? type : type.substring(dot + 1);
         }
+    }
+
+    /** One element of {@code Throwable.getStackTrace()}. */
+    public static final class Frame {
+        public String className = "";
+        public String methodName = "";
+        /** Null if the class file does not name its source. */
+        public String fileName;
+        /** 1-based; negative if unknown or native. */
+        public int line;
     }
 
     public static final class View {

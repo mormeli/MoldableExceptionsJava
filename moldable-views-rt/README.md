@@ -276,6 +276,9 @@ the authoritative list of fields.
       "type": "java.lang.IllegalStateException",
       "message": "checkout failed",
       "moldable": true,
+      "frames": [
+        {"className": "com.acme.Checkout", "methodName": "save", "fileName": "Checkout.java", "line": 42}
+      ],
       "views": [
         {"title": "Throw site", "kind": "table", "custom": true, "priority": 20,
          "columns": ["Frame", "Variable"], "rows": [["save:42", "user"]], "rowStyles": ["warning"]},
@@ -292,6 +295,8 @@ the authoritative list of fields.
 - `moldable` is true when the exception has at least one non-built-in view (even an error or unavailable one).
   `MoldPlan.moldable` is the same, for the whole chain: the automatic stop at uncaught exceptions only stops if it is
   true.
+- `frames` is `getStackTrace()` as data, innermost frame first (at most 200). The plugin uses it to go from an
+  exception of a log file to the code; the Stack trace view shows the same frames as text.
 - `custom` is false only for the built-in views.
 - `kind` is one of `text`, `diff`, `table`, `highlight`, `error`, `unavailable`.
 

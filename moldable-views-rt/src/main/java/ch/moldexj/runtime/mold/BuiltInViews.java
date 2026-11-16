@@ -43,13 +43,34 @@ final class BuiltInViews {
         return details.toString();
     }
 
-    private static String stackTrace(Throwable t) {
-        StackTraceElement[] frames;
-        try {
-            frames = t.getStackTrace();
-        } catch (Throwable e) {
-            frames = new StackTraceElement[0];
+    /**
+     * The stack trace as data, for a tool that wants to go to the code without parsing the text of the Stack trace
+     * view: {@code [{"className":"a.B","methodName":"m","fileName":"B.java","line":42}, ...]}.
+     */
+    static String frames(Throwable t) {
+        StackTraceElement[] frames = stackFrames(t);
+        List<String> json = new ArrayList<>();
+        for (int i = 0; i < frames.length && i < FRAME_LIMIT; i++) {
+            StackTraceElement frame = frames[i];
+            json.add("{\"className\":" + Json.string(frame.getClassName())
+                    + ",\"methodName\":" + Json.string(frame.getMethodName())
+                    + ",\"fileName\":" + Json.string(frame.getFileName())
+                    + ",\"line\":" + frame.getLineNumber() + "}");
         }
+        return Json.array(json);
+    }
+
+    private static StackTraceElement[] stackFrames(Throwable t) {
+        try {
+            StackTraceElement[] frames = t.getStackTrace();
+            return frames == null ? new StackTraceElement[0] : frames;
+        } catch (Throwable e) {
+            return new StackTraceElement[0];
+        }
+    }
+
+    private static String stackTrace(Throwable t) {
+        StackTraceElement[] frames = stackFrames(t);
         if (frames.length == 0) {
             return "(no stack trace)";
         }

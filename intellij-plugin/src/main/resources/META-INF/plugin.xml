@@ -18,7 +18,28 @@
                   topic="com.intellij.xdebugger.XDebuggerManagerListener"/>
     </projectListeners>
 
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- The exceptions of a log file written with ExceptionPrinter ([moldex] lines). -->
+        <toolWindow id="Moldable Log" anchor="left" secondary="true"
+                    icon="AllIcons.Debugger.Db_exception_breakpoint"
+                    factoryClass="ch.moldexj.log.MoldexLogToolWindowFactory"/>
+    </extensions>
+
     <actions>
+        <!-- Toolbar of the Moldable Log tool window (MoldexLogPanel). -->
+        <group id="Moldable.Log.Toolbar">
+            <action id="Moldable.Log.Open" class="ch.moldexj.log.actions.OpenLogAction"
+                    text="Open Log File..." description="List the exceptions of a log file that has [moldex] lines"
+                    icon="AllIcons.Actions.MenuOpen"/>
+            <action id="Moldable.Log.Reload" class="ch.moldexj.log.actions.ReloadLogAction"
+                    text="Reload" description="Read the log file again" icon="AllIcons.Actions.Refresh"/>
+            <separator/>
+            <action id="Moldable.Log.Previous" class="ch.moldexj.log.actions.PreviousExceptionAction"
+                    text="Previous Exception" icon="AllIcons.Actions.PreviousOccurence"/>
+            <action id="Moldable.Log.Next" class="ch.moldexj.log.actions.NextExceptionAction"
+                    text="Next Exception" icon="AllIcons.Actions.NextOccurence"/>
+        </group>
+
         <action id="AssertBreakdown" class="ch.moldexj.action.AssertBreakdownAction"
                 text="Break Down Assert">
             <add-to-group group-id="XDebugger.Frames.Tree.Popup" anchor="last"/>

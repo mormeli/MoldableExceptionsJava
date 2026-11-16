@@ -131,6 +131,19 @@ Without a debugger a view only sees the exception itself; views that need `@Stac
 instead of running. See [the runtime's README](moldable-views-rt/README.md#without-a-debugger) and
 `samples/console-demo`.
 
+### Reading a log in IntelliJ
+
+The tool window **Moldable Log** (left side) lists the exceptions of a log file: **Open Log File...** reads every
+line that contains `[moldex] {...}`, wherever it is in the line, and ignores the rest of the file. Selecting an
+exception, or stepping with **Previous / Next Exception**, does two things:
+
+- it opens the code of the innermost stack frame whose class is in the project's sources, and
+- it shows the views in the same dialog the debugger uses.
+
+The views are the ones the program molded when it printed the line, so the program does not have to run, and views
+that needed the debugger stay `unavailable`. **Reload** reads the file again. Try it with
+[samples/console-demo/sample.log](samples/console-demo/sample.log), the output of `samples/console-demo`.
+
 ## Layout
 
 | Module | Runs in | Role |
@@ -138,7 +151,7 @@ instead of running. See [the runtime's README](moldable-views-rt/README.md#witho
 | `moldable-views` | your app (Java 8+) | `@DebugView` and `DebugViews.text / diff / table`: what you need to write views. With this module alone, the plugin injects the runtime when you debug. |
 | `moldable-views-processor` | your build (javac 8+) | Annotation processor that writes the view manifest. |
 | `moldable-views-rt` | your app, as a dependency (it brings `moldable-views` along) or injected by the plugin | The runtime. `ExceptionMolder`: `plan` finds the views of the chain and the debugger data they need, `mold` calls the `@DebugView` methods with their parameters and returns one JSON string. Also home of `ViewManifest`, the manifest format the processor, the plugin and the helper share. See [its README](moldable-snapshot-rt/README.md). |
-| `intellij-plugin` | IntelliJ IDEA | Loads the helper into the paused JVM, shows the dialog, opens it automatically at exception stops. |
+| `intellij-plugin` | IntelliJ IDEA | Loads the helper into the paused JVM, shows the dialog, opens it automatically at exception stops. Reads log files with `[moldex]` lines (tool window Moldable Log). |
 | `samples/checkout-demo` | – | Throws an `ApiContractMismatchException`, wraps it in an `IllegalStateException` that nothing catches. |
 
 ## Try it

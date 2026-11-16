@@ -12,6 +12,17 @@ dependencies {
         intellijIdea("2025.3")
         bundledPlugin("com.intellij.java")
     }
+
+    // Plain unit tests, for code that needs no running IDE (the log reader).
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // The IntelliJ Platform's JUnit 5 session listener refers to JUnit 4 classes; without them no test starts.
+    testRuntimeOnly("junit:junit:4.13.2")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 java {
